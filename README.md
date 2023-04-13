@@ -1,7 +1,7 @@
 # prog2006-assignment-2
 
-* Submission Deadline: **21.04.2023 - 23:59**
-* Peer-review Deadline: **28.04.2023 - 23:59**
+* Submission Deadline: **27.04.2023 - 23:59**
+* Peer-review Deadline: **01.05.2023 - 23:59**
 * Submission must be done through [the submission system](https://10.212.175.82)
    - https://10.212.175.82
    - Hash: `cg49jme8eh9dbc0db0sg`
@@ -40,17 +40,25 @@ In addition, it can have "standard library" functions, defined in the language i
 
 The `bprog` program is represented as a sequence of arguments and operations. This sequence from text needs to be `parsed` and converted into an internal representation that can subsequently be used and manipulated by the interpreter. The interpreter needs two things - the program, and the current version of the operand stack (where the arguments to operations are stored). To make it simple, 
 
-## Tokeniser and parser
+## Tokeniser (Lexer)
 
-Instead of implementing a proper parser, we will simply use the Haskell command `words`, and use space as a delimiter for all tokens in the language.
+Instead of implementing a proper lexer, we will simply use the Haskell command `words`, and use space as a delimiter for all tokens in the language.
 
-To make the task easy, we will use `words` to split the input into tokens. Normally, we write strings like this: `"This is a string"`, lists like that: `[1,2,3]` and tuples like: `(1,"text)`. However, that would require more complex parsing rules. Instead, we will simply use space as a delimiter, so thus we will have:
+To make the task easy, we will use `words` to split the input into tokens. Normally, we write strings like this: `"This is a string"`, lists like that: `[1,2,3]` and tuples like: `(1,"text)`. However, that would require more complex lexer rules. Instead, we will simply use space as a delimiter, so thus we will have:
 * symbols: `a_symbol` Note: because there are no restrictions on symbols, anything that is not a reserved keyword in the language can become a valid symbol, and therefore, a function name.
 * strings: `" this is a string "`
 * lists: `[ 1 2 3 ]`
 * quotations (aka code blocks: `{ 1 2 + }`
 
+Note, that the pretty printing of your internal representations can, and should use compact notation instead. So even though the bprog list is `[ 1 2 3 ]` you should represent it for debugging purposes as `[1,2,3]`. This way your pretty-printing will be consistent with the tests (see below).
 
+## Parser
+
+After all the program text is split into tokens, you should convert it into an internal representation, known as Abstract Syntax Tree (AST).
+In our case, for mostly postfix language, you may not need to use a tree, but a simple list representing all the program elements.
+It is up to you to decide the internal representation of your program.  Pass all the tokens from the previous step, 
+and convert them into your internal representation. 
+The representation matters to the next step, which is the Interpreter.
 
 ## Interpreter
 
@@ -78,7 +86,7 @@ Note: the stack effects do not mean anything, they are just human readable expla
 
 We limit our language to TEXT only. All read/write operation operate on `String` types.
 
-* `print` ( x -- ) takes the top element from the stack and prints it to the standard input (print it with EOL, end-of-line character).
+* `print` ( x -- ) takes the top element from the stack and prints it to the standard output.
 * `read` ( -- x ) reads a line from standard input and puts it into the stack as string.
 
 
@@ -98,6 +106,7 @@ All literals are simply pushed onto the stack.
 * Bools: `True` `False`
 * Strings, delimited by double quotes `"` eg. " hello world "
 * Lists, delimited by square brackets `[ ]`
+
 
 ## Arithmetic
 
@@ -124,6 +133,7 @@ Reuse the code from the calculator. Each operation has the number of operands (a
 * `not` ( x -- bool ) - logical NOT. I've implemented it such that it also works like a negation on numbers, so, if you call it: `10 not` the program will put `-10` on top of the stack.
 
 
+
 ## `Code block`, called `block`, or `quotation`
 
 Code block (aka just `block` or `quotation`) is a program sequence delimited by curly braces. For example `{ 1 + }` is a quotation that increments the current top element on the stack by 1.
@@ -141,6 +151,7 @@ Lists are delimited by square brackets. Lists can be nested. List can hold arbit
 [ " hello " " world " ]
 [ 1 " hello " 2 " world " [ False True ] hello_symbol ]
 ```
+
 
 ### List operations
 
@@ -162,6 +173,7 @@ Control flow operations operate both, on the argument stack as well as on the pr
 * `if then_block else_block` ( bool -- ) `if` expression takes a boolean value from the stack, and executes the `then_code_block` if true, or `else_code_block` if false. The executed block operates in the context of the global stack.
 * `loop break block` ( -- ) execute the block until `break` becomes True. `break` and `block` are expected to be quotations. `break` evaluating to True or False does not leave that value on the stack (it is consumed by the `loop`)
 * `times block` ( num -- ) repeat the block `num` times
+
 
 ### Examples
 
@@ -187,8 +199,8 @@ Note also that this is also valid code (white space is needed, indentation is no
 ```
 {
   if
-  { " there was True on the stack " println }
-  { " there was False on the stack " println }
+  { " there was True on the stack " print }
+  { " there was False on the stack " print }
 }
 ```
 
@@ -197,8 +209,8 @@ This is a code block, that you can assign a name, and use in your program later 
 ```
 {
   if
-  { " there was True on the stack " println }
-  { " there was False on the stack " println }
+  { " there was True on the stack " print }
+  { " there was False on the stack " print }
 }
 check_stack_and_print
 swap
@@ -222,6 +234,7 @@ With the function definition, one can define a named code block (aka function). 
 * `sayhello { " hello " write } fun` defines a function `sayhello` that print `hello`.
 * `name " Mariusz " :=` defines a symbol `name` (aka variable) that is of value `" Mariusz "`
 * `age 10 :=` the symbol age now is of value `10`
+* the above program can be also written as: `10 age swap :=`
 
 
 
@@ -232,9 +245,9 @@ To interpret the functions and variables you need to be able to recognised all a
 * unknown symbol evaluates to itself, whereas bound symbols evaluate to what they are bound. 
 For example: 
 * `age print` prints `age` (a symbol)
-* `age 10 = age print` prints `10` (a value to which symbol age is now bound)
+* `age 10 := age print` prints `10` (a value to which symbol age is now bound)
 * `counter { " hello " print } times` will crash, as the times expects an integer as the first argument, and instead, it got a symbol (that evaluates to itself, which is, a symbol)
-* `counter 10 = counter { " Hello World " print } times` is a valid program and it will print `Hello World` string 10 times.
+* `counter 10 := counter { " Hello World " print } times` is a valid program and it will print `Hello World` string 10 times.
 
 
 
@@ -299,7 +312,9 @@ Same as the minimal subset above plus:
 
 ### IO
 
-IO makes it impossible for automating the tests, therefore, IO is optional. For people that want to go for B and A, you must have automated tests for EVERYTHING except `print` and `read` and for those three commands, you need to keep them separated from the main execution and interpretation contexts, such that you can have automated tests for everything else. 
+In Haskell, IO makes it impossible for automating the tests, therefore, IO is optional. For people that want to go for B and A, you must have automated tests for EVERYTHING except `print` and `read` and for those three commands, you need to keep them separated from the main execution and interpretation contexts, such that you can have automated tests for everything else. 
+
+In Rust, mixing IO with core interpreter logic is easier, so it is not a big deal.
 
 
 
