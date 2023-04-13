@@ -227,7 +227,7 @@ There are two constructs: assignment `:=` and function definition `fun`.
 
 Assignment `:=` takes two arguments, left hand side must be a `symbol` (aka `variable`), and right hand side can be any value different from a symbol, eg. number, bool, list or code_block.
 
-Function definition `fun` takes two arguments, left hand side must be a `symbol` (aka function name), and the right hand side must be quotation (code block).
+Function definition `fun` takes two arguments, left hand side must be a `symbol` (aka `function name`), and the right hand side must be quotation (code block).
 
 With the function definition, one can define a named code block (aka function). For example: 
 * `inc { 1 + } fun` defines a new function called `inc` that increments the element on the stack.
@@ -235,6 +235,21 @@ With the function definition, one can define a named code block (aka function). 
 * `name " Mariusz " :=` defines a symbol `name` (aka variable) that is of value `" Mariusz "`
 * `age 10 :=` the symbol age now is of value `10`
 * the above program can be also written as: `10 age swap :=`
+
+Once a symbol is bound to a function or variable, using that symbol will either run the function or evaluate the variable to a value.
+For example:
+* `inc { 1 + } fun 1 inc` will execute the `inc` function on the argument on the stack, and produce 2 onto the stack.
+* `age 10 := age` will bind age variable to value 10, and then put 10 on top of the stack (because we have used the variable `age` at the end)
+
+In order to actually put a bound symbol onto the stack (without executing the function or without evaluating to a value in case of variable), we use `tick` operator, which is a single quote symbol `'`. Observe these two programs:
+* `age 10 := age` -- produces 10 on top of the stack
+* `age 10 := ' age` -- puts symbol age on top of the stack. The symbol `age` represents a variable, but the variable has not been evaluated to a value and the raw symbol is put onto the stack.  
+* `age 10 := age 20 :=` -- this program is illegal, because assignment expects a symbol on the left-hand side, but instead, it gets 10.
+* `age 10 := ' age 20 :=` -- this program defines a variable `age` and binds it to 10 first, then puts symbol `age` onto the stack, and re-binds it to value 20.
+* Note, if the symbol has not been bound to function or variable, using it will put it onto the stack raw. Because unbound symbol evaluates to itself.
+
+In order to evaluate bound symbol to a value, one can use `eval` function. Eval expects symbol on the stack, and returns the value of that symbol. In the case of variable it will be the value, and in the case of the function name it will be the quotation that is the function body. Observe:
+* `age 10 := ' age eval` will bind age to value 10, then it will put age onto the stack as symbol, and then evaluate it to value 10. So, this program will end up with 10 on top of the stack.
 
 
 
@@ -426,7 +441,12 @@ Please implement the same official TESTS such that you can list in your submissi
     t "10 age swap := age"              "10"
     t "[ 1 2 3 ] list swap := list"     "[1,2,3]"
     t "age 20 := [ 10 age ]"            "[10,20]"
+    
+    {-- symbols handling}
+    t "age 10 := ' age"                   "age"
+    t "age 10 := ' age eval"              "10"
 
+    {-- functions -} 
     t "inc { 1 + } fun 1 inc"           "2"
     t "mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10" "110"
     
@@ -479,7 +499,7 @@ Please implement the same official TESTS such that you can list in your submissi
 
     t "odd { dup 2 div swap 2 / == if False True } fun \
      \ toList { [ ] swap times cons } fun \
-     \ gen1toNum { max swap := 1 loop { dup max > } { dup 1 + } } fun \
+     \ gen1toNum { ' max swap := 1 loop { dup max > } { dup 1 + } } fun \
      \ 4 gen1toNum 5 toList map odd"                            "[True,False,True,False,True]"
 
 ```
