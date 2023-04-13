@@ -494,7 +494,7 @@ Please implement the same official TESTS such that you can list in your submissi
      \ 1 2 3 4 \
      \ 4 toList"                                                      "[1,2,3,4]"
     
-    t "gen1toNum { max swap := 1 loop { dup max > } { dup 1 + } } fun \
+    t "gen1toNum { ' max swap := 1 loop { dup max > } { dup 1 + } } fun \
      \ 3 gen1toNum + + +"                                            "10"
 
     t "odd { dup 2 div swap 2 / == if False True } fun \
