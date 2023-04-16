@@ -400,6 +400,24 @@ The first line is composed of the symbol `odd` that is put onto the stack. Becau
 
 Then, in the second line, we put 4 and 5 onto the stack, and CALL (RUN) our newly defined function twice. So, we will get `True` first, from running odd with 5. The stack will be `True 4` with True on top and 4 below. We swap the order to put 4 on top, and run `odd` again. This type the argument to `odd` will be 4 and the function will return `False`. So, after executing the program we will have `False` on top of the stack, and `True` below.
 
+### Case four
+
+```
+plus { + } fun
+```
+
+This code defines new function called `plus`. In our language, when we do that, there is NO difference between `+` and `plus`. These two ARE exactly the same (from the programmer perspective).  So doing:
+```
+10 20 plus
+10 20 +
+```
+is exactly the same. Note however, that this:
+```
+10 20 { + }
+```
+is not the same as the code above.  This code, puts three things onto the stack: on top we will have quotation, then we will have 20 and then 10 at the bottom.
+
+
 
 # Tests
 
