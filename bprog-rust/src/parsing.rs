@@ -2,6 +2,7 @@ use std::cmp::max;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Display, Error, Formatter};
+use std::ops::{Add, Div, Mul, Sub};
 use crate::stack::Stack;
 
 #[derive(Clone, Debug)]
@@ -16,16 +17,46 @@ pub enum StackToken {
     Binding(String),
     List(Vec<StackToken>),
     Error(Error),
-    Operation(Operation)
+    Operation(Operation),
+    Empty
+}
+
+impl PartialEq for StackToken {
+    fn eq(&self, other: &Self) -> bool {
+        return match (self, other) {
+            (StackToken::Integer(_), StackToken::Integer(_)) => true,
+            (StackToken::Float(_), StackToken::Float(_)) => true,
+            (StackToken::String(_), StackToken::String(_)) => true,
+            (StackToken::Boolean(_), StackToken::Boolean(_)) => true,
+            (StackToken::Block(_), StackToken::Block(_)) => true,
+            (StackToken::Binding(_), StackToken::Binding(_)) => true,
+            (StackToken::List(_), StackToken::List(_)) => true,
+            (StackToken::Error(_), StackToken::Error(_)) => true,
+            (StackToken::Operation(_), StackToken::Operation(_)) => true,
+            (StackToken::Empty, StackToken::Empty) => true,
+            (_, _) => false
+
+        }
+    }
 }
 
 
-#[derive(Clone)]
 /// enumerator of operations, i.e. specific functions.
 pub enum Operation {
     Void,
-    Arithmetic(fn(&mut Stack<StackToken>) -> ())
+    Arithmetic(Box<dyn Fn(&mut Stack<StackToken>) -> ()>)
 }
+
+impl Clone for Operation {
+    fn clone(&self) -> Self {
+        match self {
+            Operation::Void => Operation::Void,
+            Operation::Arithmetic(f) => Operation::Arithmetic(),
+        }
+    }
+}
+
+
 
 
 /// Display for Operations
@@ -44,6 +75,7 @@ impl Debug for Operation {
 impl Display for StackToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            StackToken::Empty => write!(f, "empty"),
             StackToken::Integer(i) => write!(f, "{}", i),
             StackToken::Float(fl) => write!(f, "{}", fl),
             StackToken::String(s) => write!(f, "\"{}\"", s),
@@ -109,7 +141,7 @@ impl Display for StackToken {
 ///
 /// assert_eq!(remainder, vec!["test"]);
 /// ```
-pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
+pub(crate) fn parse(mut tokens: Vec<String>, op_dictionary: &HashMap<String, Operation>) -> (Vec<StackToken>, Vec<String>) {
     let mut parsed: Vec<StackToken> = vec![];
     loop {
         if let Some(t) = tokens.clone().get(0) {
@@ -120,7 +152,7 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
                 "{" | "[" => {
                     tokens = tokens[1..].to_vec();
                     let mut content = vec![];
-                    (content, tokens) = parse(tokens.clone());
+                    (content, tokens) = parse(tokens.clone(), op_dictionary);
                     parsed.push(if t == "{" { StackToken::Block(content.clone()) } else { StackToken::List(content.clone()) });
 
                 },
@@ -140,8 +172,13 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
                     tokens = tokens[1..].to_vec()
                 },
                 other => {
-                    parsed.push(StackToken::Binding(other.to_string()));
-                    tokens = tokens[1..].to_vec()
+                    if let Some(op) = op_dictionary.get(other) {
+                        parsed.push(StackToken::Operation(op.clone()));
+                        tokens = tokens[1..].to_vec()
+                    } else {
+                        parsed.push(StackToken::Binding(other.to_string()));
+                        tokens = tokens[1..].to_vec()
+                    }
                 }
             }
         } else {
@@ -184,13 +221,74 @@ pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<St
 
 
 
+pub fn operations_map() -> HashMap<String, Operation> {
+    let mut binding_list = vec!(
+        ("+", Operation::Arithmetic(binary_numerical(false, add))),
+        ("-", Operation::Arithmetic(binary_numerical(false, sub))),
+        ("/", Operation::Arithmetic(binary_numerical(false, div))),
+        ("*", Operation::Arithmetic(binary_numerical(false, mul))),
+        ("div", Operation::Arithmetic(binary_numerical(true, div))),
+    );
+    let res: Vec<(String, Operation)> = binding_list.into_iter().map(|s| (s.0.to_string(), s.1)).collect();
+    return HashMap::from_iter(res)
+}
 
 
+fn binary_numerical(strict_type: bool, op: fn(a: f64, b: f64) -> f64) -> Box<dyn Fn(&mut Stack<StackToken>) -> ()> {
+    return Box::new(move |stack: &mut Stack<StackToken>| {
+        let mut rhs = StackToken::Empty;
+        let mut lhs = StackToken::Empty;
+        if let Some(token) = stack.pop() {
+            rhs = token;
+        }
+        if let Some(token) = stack.pop() {
+            lhs = token;
+        }
+        if rhs == StackToken::Empty || lhs == StackToken::Empty {
+            stack.push(StackToken::Error(fmt::Error));
+            return
+        }
+        // If strict_type is on, implicit type conversion is off.
+        if strict_type && ( lhs != rhs ) {
+            stack.push(StackToken::Error(fmt::Error));
+            return
+        }
 
+        match (lhs, rhs){
+            (StackToken::Integer(l), StackToken::Integer(r)) => {
+                stack.push(StackToken::Integer(op(l as f64, r as f64) as i32))
+            },
+            (StackToken::Float(l), StackToken::Integer(r)) => {
+                stack.push(StackToken::Float(op(l, r as f64)))
+            },
+            (StackToken::Integer(l), StackToken::Float(r)) => {
+                stack.push(StackToken::Float(op(l as f64, r)))
+            },
+            (StackToken::Float(l), StackToken::Float(r)) => {
+                stack.push(StackToken::Float(op(l, r)))
+            },
+            (_, _) => {
+                stack.push(StackToken::Error(fmt::Error)) // TODO: error handling
+            }
+        }
+    })
+}
 
+fn add(a: f64, b: f64) -> f64 {
+    return a + b
+}
 
+fn sub(a: f64, b: f64) -> f64{
+    return a - b
+}
 
+fn mul(a: f64, b: f64) -> f64{
+    return a * b
+}
 
+fn div(a: f64, b: f64) -> f64 {
+    return a / b
+}
 
 
 

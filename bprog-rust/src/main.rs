@@ -2,44 +2,59 @@ use std::fmt::Error;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Read};
+use crate::parsing::{get_section, Operation, operations_map, parse, StackToken};
 use crate::utility::get_tokens;
 
 mod stack;
 mod utility;
-
+mod parsing;
 
 fn main() {
+    let op_map = operations_map();
     let mut in_file = File::open("./test_program.txt").unwrap();
+
+    let mut program_tokens= vec![];
+    match get_tokens(Some(&mut in_file)) {
+        Ok(mut tok) => {
+            let (mut one, mut two) = parse(tok, &op_map);
+            one.iter().for_each(|t| println!("{} ", &t));
+            program_tokens = one;
+        }
+        Err(_) => {println!("didnt work in main")}
+    }
+
     let mut stack = stack::Stack::new();
 
 
-    (0..10).map(|x| x.to_string())
-        .for_each(|x| stack.push(x));
-    println!("Stack size is {}", stack.size());
-    stack.pop().unwrap();
-    println!("Stack size is {}", stack.size());
-    stack.display_all_contents();
-    stack.push(String::from("5"));
-    assert_eq!("5", *stack.top().unwrap());
-
-    println!("testing from file");
-    match get_tokens(Some(&mut in_file)) {
-        Ok(tokens) => {
-            println!("ok");
-            println!("{:?}", &tokens);
-        }
-        Err(_) => {}
-    }
-
     loop {
-        println!("ok");
         match get_tokens(None) {
-            Ok(tokens) => {
-                println!("ok");
-                println!("{:?}", &tokens);
-            }
-            Err(_) => break
+            Ok(mut tokens) => {
+                let (mut stack_tokens, mut two) = parse(tokens, &op_map);
+                println!("{:?}", &stack_tokens);
+                stack_tokens.iter()
+                    .for_each(|t| {
+                        match t {
+                            StackToken::Operation(op) => {
+                                match op {
+                                    Operation::Void => {}
+                                    Operation::Arithmetic(fun) => {
+                                        fun(& mut stack)
+                                    }
+                                }
+                            }
+                            others => {
+                                stack.push(others.clone())
+                            }
+                        }
+                    })
+                }
+                //match stack_tokens {
+                //    None => {println!("something went to shits");}
+                //    Some(ts) => println!("{:?}", &ts)
+                //}
+            _ => {}
         }
+        stack.display_all_contents();
     };
-    println!("program exit due to error in parsing")
+
 }
