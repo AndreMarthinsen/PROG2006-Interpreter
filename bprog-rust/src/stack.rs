@@ -1,4 +1,38 @@
-//! Summary goes here
+//! This module implements a traditional stack data structure with the
+//! usual top, pop, and push methods along with iterator methods.
+//!
+//! The Stack is represented as an enum with two variants:
+//! - Empty: represents an empty stack
+//! - Top: represents a non-empty stack and holds the current value on top of
+//!        the stack, a pointer to the bottom of the stack, and the current
+//!        size of the stack.
+//!
+//! The Stack object provides methods to push, pop, and retrieve the top
+//! element without popping it off the stack. The object also provides
+//! methods to display all contents of the stack, check if the stack is
+//! empty, retrieve the element count of the stack, and create iterators
+//! over the stack's contents.
+//!
+//! Additionally, this module provides the implementation of StackIter
+//! and the ability to create a new stack from an iterator using `.collect()`.
+//!
+//! # Examples
+//!
+//! ```
+//! use stack::Stack;
+//!
+//! let mut stack = Stack::new();
+//! assert_eq!(Stack::Empty, stack);
+//!
+//! stack.push(5);
+//! assert_eq!(5, *stack.top().unwrap());
+//! assert_eq!(1, stack.size());
+//!
+//! let top = stack.pop().unwrap();
+//! assert_eq!(5, top);
+//!
+//! assert_eq!(true, stack.is_empty());
+//! ```
 
 
 use std::fmt::{Debug, Display};
