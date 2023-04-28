@@ -1,6 +1,11 @@
-this is a series of tokens in a test program file
-newline happened here
-one
-two
-three
-ok
+{
+  if
+  { " there was True on the stack " print }
+  { " there was False on the stack " print }
+}
+[ 1 2 3 ]
+[ " hello " " world " ]
+[ 1 " hello " 2 " world " [ False True ] hello_symbol ]
+3 10 > if
+{ " 3 is MORE than 10 " print }
+{ " 3 is LESS then 10 " print }
