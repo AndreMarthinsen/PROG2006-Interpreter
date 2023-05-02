@@ -1,9 +1,11 @@
+extern crate core;
+
 use std::fmt::Error;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Read};
 use crate::parsing::{get_section, parse};
-use crate::token::{Op, StackToken};
+use crate::token::{Numeric, Op, StackToken};
 use crate::utility::get_tokens;
 
 mod stack;
@@ -12,6 +14,14 @@ mod parsing;
 mod token;
 
 fn main() {
+
+    let val = Numeric::Int32(2);
+    let val2 = Numeric::Int32(3);
+
+    let val3 = val + val2;
+    println!("{}", val3);
+
+    println!("{}", (val3 - Numeric::Int32(10)))
 
     /*
     let mut in_file = File::open("./test_program.txt").unwrap();

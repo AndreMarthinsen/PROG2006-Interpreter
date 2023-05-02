@@ -123,7 +123,7 @@ pub fn operations_map() -> HashMap<String, Op> {
     return HashMap::from_iter(res)
 }
 */
-
+/*
 fn binary_numerical(strict_type: bool, op: fn(a: f64, b: f64) -> f64) -> Box<dyn Fn(&mut Stack<StackToken>) -> ()> {
     return Box::new(move |stack: &mut Stack<StackToken>| {
         let mut rhs = StackToken::Empty;
@@ -181,7 +181,7 @@ fn div(a: f64, b: f64) -> f64 {
 }
 
 
-
+*/
 
 
 
