@@ -3,7 +3,7 @@ use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
 use std::fmt::{Debug, Display, Error, Formatter, write};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 
 
 //////////////////// STACK TOKEN //////////////////////////////////////////////////////////////////
@@ -41,11 +41,47 @@ impl<'a, 'b> Add<&'b StackToken> for &'a StackToken { //impl<'a, 'b> Add<&'b Num
     }
 }
 
+impl StackToken {
+    /// Defines what can be StackToken variants can interpreted as true,
+    /// and under which conditions they are considered true.
+    fn is_true(&self) -> bool {
+        match self {
+            StackToken::Num(val) => *val != Numeric::Int32(0),
+            StackToken::Boolean(val) => *val,
+            StackToken::String(s) => !s.is_empty(),
+            StackToken::List(l) => !l.is_empty(),
+            StackToken::Error(_) => false,
+            _ => false,
+        }
+    }
+}
+
+/// Uses the bitwise and operator as a shorthand for logical AND.
+impl<'a, 'b> BitAnd<&'b StackToken> for &'a StackToken {
+    type Output = StackToken;
+
+    fn bitand(self, rhs: &'b StackToken) -> Self::Output {
+        StackToken::Boolean(self.is_true() && rhs.is_true())
+    }
+}
+
+/// Uses the bitwise or operator as shorthand for logical OR.
+impl<'a, 'b> BitOr<&'b StackToken> for &'a StackToken {
+    type Output = StackToken;
+
+    fn bitor(self, rhs: &'b StackToken) -> Self::Output {
+        StackToken::Boolean(self.is_true() || rhs.is_true())
+    }
+}
+
+
+
 /// Implements Display for StackToken, allowing a pretty print of the
 /// contents of a stack and in-program representation in general.
 impl Display for StackToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            StackToken::Error(err) => write!(f, "{}", err),
             StackToken::String(s) => write!(f, "\"{}\"", s),
             StackToken::Boolean(b) => write!(f, "{}", b),
             StackToken::Binding(s) => write!(f, "{}", s),
