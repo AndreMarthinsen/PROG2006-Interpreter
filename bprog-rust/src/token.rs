@@ -20,7 +20,6 @@ pub enum StackToken {
     List(Vec<StackToken>),
     Error(StackError),
     Operation(Op),
-    Empty
 }
 
 /// Implements Add for StackTokens, with varying behaviour depending on the type.
@@ -42,7 +41,41 @@ impl<'a, 'b> Add<&'b StackToken> for &'a StackToken { //impl<'a, 'b> Add<&'b Num
     }
 }
 
-
+/// Implements Display for StackToken, allowing a pretty print of the
+/// contents of a stack and in-program representation in general.
+impl Display for StackToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StackToken::String(s) => write!(f, "\"{}\"", s),
+            StackToken::Boolean(b) => write!(f, "{}", b),
+            StackToken::Binding(s) => write!(f, "{}", s),
+            StackToken::List(list) => {
+                write!(f, "[")?;
+                let mut iter = list.iter();
+                if let Some(first) = iter.next() {
+                    write!(f, "{}", first)?;
+                    for item in iter {
+                        write!(f, " {}", item)?;
+                    }
+                }
+                write!(f, "]")
+            },
+            StackToken::Operation(op) => write!(f, "op: {:?}", op),
+            StackToken::Block(c) => {
+                write!(f, "{{ ")?;
+                let mut iter = c.iter();
+                if let Some(first) = iter.next() {
+                    write!(f, "{}", first)?;
+                    for item in iter {
+                        write!(f, " {}", item)?;
+                    }
+                }
+                write!(f, " }}")
+            },
+            _ => write!(f, "")
+        }
+    }
+}
 
 //////////////////////////////// STACK ERROR //////////////////////////////////////////////////////
 
@@ -253,39 +286,3 @@ impl Debug for Op {
 }
 
 
-/// Implements Display for StackToken, allowing a pretty print of the
-/// contents of a stack and in-program representation in general.
-impl Display for StackToken {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            StackToken::Empty => write!(f, "empty"),
-            StackToken::String(s) => write!(f, "\"{}\"", s),
-            StackToken::Boolean(b) => write!(f, "{}", b),
-            StackToken::Binding(s) => write!(f, "{}", s),
-            StackToken::List(list) => {
-                write!(f, "[")?;
-                let mut iter = list.iter();
-                if let Some(first) = iter.next() {
-                    write!(f, "{}", first)?;
-                    for item in iter {
-                        write!(f, " {}", item)?;
-                    }
-                }
-                write!(f, "]")
-            },
-            StackToken::Operation(op) => write!(f, "op: {:?}", op),
-            StackToken::Block(c) => {
-                write!(f, "{{ ")?;
-                let mut iter = c.iter();
-                if let Some(first) = iter.next() {
-                    write!(f, "{}", first)?;
-                    for item in iter {
-                        write!(f, " {}", item)?;
-                    }
-                }
-                write!(f, " }}")
-            },
-            _ => write!(f, "")
-        }
-    }
-}
