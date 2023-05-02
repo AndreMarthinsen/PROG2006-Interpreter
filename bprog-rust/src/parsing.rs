@@ -17,7 +17,7 @@ pub enum StackToken {
     Binding(String),
     List(Vec<StackToken>),
     Error(Error),
-    Operation(Operation),
+    Operation(Op),
     Empty
 }
 
@@ -42,16 +42,16 @@ impl PartialEq for StackToken {
 
 
 /// enumerator of operations, i.e. specific functions.
-pub enum Operation {
-    Void,
-    Arithmetic(Box<dyn Fn(&mut Stack<StackToken>) -> ()>)
+pub enum Op {
+    Void
 }
 
-impl Clone for Operation {
+
+impl Clone for Op {
     fn clone(&self) -> Self {
         match self {
-            Operation::Void => Operation::Void,
-            Operation::Arithmetic(f) => Operation::Arithmetic(),
+            Op::Void => Op::Void,
+//            Operation::Arithmetic(f) => Operation::Arithmetic(),
         }
     }
 }
@@ -60,11 +60,11 @@ impl Clone for Operation {
 
 
 /// Display for Operations
-impl Debug for Operation {
+impl Debug for Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Operation::Void => write!(f, "Void"),
-            Operation::Arithmetic(_) => write!(f, "Arithmetic"),
+            Op::Void => write!(f, "Void"),
+          //  Op::Arithmetic(_) => write!(f, "Arithmetic"),
         }
     }
 }
@@ -141,7 +141,7 @@ impl Display for StackToken {
 ///
 /// assert_eq!(remainder, vec!["test"]);
 /// ```
-pub(crate) fn parse(mut tokens: Vec<String>, op_dictionary: &HashMap<String, Operation>) -> (Vec<StackToken>, Vec<String>) {
+pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
     let mut parsed: Vec<StackToken> = vec![];
     loop {
         if let Some(t) = tokens.clone().get(0) {
@@ -152,7 +152,7 @@ pub(crate) fn parse(mut tokens: Vec<String>, op_dictionary: &HashMap<String, Ope
                 "{" | "[" => {
                     tokens = tokens[1..].to_vec();
                     let mut content = vec![];
-                    (content, tokens) = parse(tokens.clone(), op_dictionary);
+                    (content, tokens) = parse(tokens.clone());
                     parsed.push(if t == "{" { StackToken::Block(content.clone()) } else { StackToken::List(content.clone()) });
 
                 },
@@ -171,15 +171,7 @@ pub(crate) fn parse(mut tokens: Vec<String>, op_dictionary: &HashMap<String, Ope
                     parsed.push(StackToken::Boolean(t == "True"));
                     tokens = tokens[1..].to_vec()
                 },
-                other => {
-                    if let Some(op) = op_dictionary.get(other) {
-                        parsed.push(StackToken::Operation(op.clone()));
-                        tokens = tokens[1..].to_vec()
-                    } else {
-                        parsed.push(StackToken::Binding(other.to_string()));
-                        tokens = tokens[1..].to_vec()
-                    }
-                }
+                other => {}
             }
         } else {
             break
@@ -220,19 +212,19 @@ pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<St
 }
 
 
-
-pub fn operations_map() -> HashMap<String, Operation> {
+/*
+pub fn operations_map() -> HashMap<String, Op> {
     let mut binding_list = vec!(
-        ("+", Operation::Arithmetic(binary_numerical(false, add))),
-        ("-", Operation::Arithmetic(binary_numerical(false, sub))),
-        ("/", Operation::Arithmetic(binary_numerical(false, div))),
-        ("*", Operation::Arithmetic(binary_numerical(false, mul))),
-        ("div", Operation::Arithmetic(binary_numerical(true, div))),
+        ("+", Op::Arithmetic(binary_numerical(false, add))),
+        ("-", Op::Arithmetic(binary_numerical(false, sub))),
+        ("/", Op::Arithmetic(binary_numerical(false, div))),
+        ("*", Op::Arithmetic(binary_numerical(false, mul))),
+        ("div", Op::Arithmetic(binary_numerical(true, div))),
     );
-    let res: Vec<(String, Operation)> = binding_list.into_iter().map(|s| (s.0.to_string(), s.1)).collect();
+    let res: Vec<(String, Op)> = binding_list.into_iter().map(|s| (s.0.to_string(), s.1)).collect();
     return HashMap::from_iter(res)
 }
-
+*/
 
 fn binary_numerical(strict_type: bool, op: fn(a: f64, b: f64) -> f64) -> Box<dyn Fn(&mut Stack<StackToken>) -> ()> {
     return Box::new(move |stack: &mut Stack<StackToken>| {
