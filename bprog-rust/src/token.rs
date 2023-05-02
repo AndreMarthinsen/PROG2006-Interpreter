@@ -2,8 +2,11 @@ use std::arch::asm;
 use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
-use std::fmt::{Debug, Display, Error, Formatter};
+use std::fmt::{Debug, Display, Error, Formatter, write};
 use std::ops::{Add, Div, Mul, Sub};
+
+
+//////////////////// STACK TOKEN //////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
 /// enumeration of stack values, allowing the stack to hold
@@ -20,11 +23,6 @@ pub enum StackToken {
     Empty
 }
 
-pub enum StackError {
-    Overflow,
-    ZeroDiv
-}
-
 impl Add for StackToken {
     type Output = StackToken;
 
@@ -36,12 +34,42 @@ impl Add for StackToken {
     }
 }
 
+//////////////////////////////// STACK ERROR //////////////////////////////////////////////////////
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StackError { // TODO: Keep as a single error type, or make specific variants?
+    Overflow,
+    ZeroDiv,
+    PopEmpty
+}
+
+impl Display for StackError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StackError::Overflow => write!(f, "err: numeric overflow"),
+            StackError::ZeroDiv=> write!(f, "err: zero division"),
+            StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!")
+        }
+    }
+}
+
+
+
+
+
+/////////////////////////// NUMERIC ///////////////////////////////////////////////////////////////
+
 #[derive(Clone, Debug)]
+/// Numeric encapsulates numeric types such as integers and floats, implementing
+/// basic arithmetic operations such as +, -, / and *.
 pub enum Numeric {
     Int32(i32),
     Float64(f64),
+    NumError(StackError)
 }
 
+/// Implements Display for the Numeric enum type.
+/// Floats are always displayed with at least 1 precision.
 impl Display for Numeric {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -53,76 +81,109 @@ impl Display for Numeric {
                     write!(f, "{}", v.to_string())
                 }
             }
+            Numeric::NumError(err) => write!(f, "{}", err)
+        }
+    }
+}
+
+/// Implements PartialEq for the Numeric type.
+/// Allows implicit type conversion between numerical types such as i32 and f64,
+/// allowing comparisons such as 5 == 5.0, which becomes 5.0 == 5.0
+impl PartialEq for Numeric {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Numeric::NumError(err), Numeric::NumError(err2)) => {
+                err == err2
+            }
+            (Numeric::Int32(v), Numeric::Int32(v2)) => {
+                v == v2
+            }
+            (Numeric::Float64(v), Numeric::Int32(v2)) => {
+                *v == *v2 as f64
+            },
+            (Numeric::Int32(v), Numeric::Float64(v2)) => {
+                *v as f64 == *v2
+            },
+            (Numeric::Float64(v), Numeric::Float64(v2)) => {
+                v == v2
+            }
+            _ => false
         }
     }
 }
 
 
-
+/// Implements addition for the Numeric type. Int x Float operations
+/// will result in Float variants being returned.
 impl Add for Numeric {
     type Output = Numeric;
-
     fn add(self, rhs: Self) -> Self::Output {
         binary_numerical(self, rhs, try_add)
     }
-
-
 }
 
+/// Implements subtraction for the Numeric type. Int x Float operations
+/// will result in Float variants being returned.
 impl Sub for Numeric {
     type Output = Numeric;
-
     fn sub(self, rhs: Self) -> Self::Output {
         binary_numerical(self, rhs, try_sub)
     }
 }
 
+/// Implements multiplication for the Numeric type. Int x Float operations
+/// will result in Float variants being returned.
 impl Mul for Numeric {
     type Output = Numeric;
-
     fn mul(self, rhs: Self) -> Self::Output {
         binary_numerical(self, rhs, try_mul)
     }
 }
 
+/// Implements division for the Numeric type. Int x Float operations
+/// will result in Float variants being returned.
 impl Div for Numeric {
     type Output = Numeric;
-
     fn div(self, rhs: Self) -> Self::Output {
         binary_numerical(self, rhs, try_div)
     }
 }
 
 
+/// binary_numerical encapsulates binary operations for the Numeric enum type,
+/// allowing reduced repetition of pattern matching and error handling.
 fn binary_numerical(lhs: Numeric, rhs: Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
     match (lhs, rhs) {
         (Numeric::Int32(v1), Numeric::Int32(v2)) => {
             match op(v1 as f64, v2 as f64) {
                 Ok(val) => Numeric::Int32(val as i32),
-                _ => Numeric::Int32(0)
+                Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Float64(v1), Numeric::Int32(v2)) => {
             match op(v1, v2 as f64) {
                 Ok(val) => Numeric::Float64(val),
-                _ => Numeric::Int32(0)
+                Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Int32(v1), Numeric::Float64(v2)) => {
             match op(v1 as f64, v2) {
                 Ok(val) => Numeric::Float64(val),
-                _ => Numeric::Int32(0)
+                Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Float64(v1), Numeric::Float64(v2)) => {
             match op(v1, v2) {
                 Ok(val) => Numeric::Float64(val),
-                _ => Numeric::Int32(0)
+                Err(e) => Numeric::NumError(e)
             }
         },
+        (Numeric::NumError(err), _) => Numeric::NumError(err),
+        (_, Numeric::NumError(err)) => Numeric::NumError(err)
     }
 }
 
+// TODO: Error handling for these
 fn try_add(a: f64, b: f64) -> Result<f64, StackError> {
     Ok(a + b)
 }
@@ -143,26 +204,7 @@ fn try_div(a: f64, b: f64) -> Result<f64, StackError> {
     }
 }
 
-
-/*
-impl PartialEq for StackToken {
-    fn eq(&self, other: &Self) -> bool {
-        return match (self, other) {
-            (StackToken::Integer(_), StackToken::Integer(_)) => true,
-            (StackToken::Float(_), StackToken::Float(_)) => true,
-            (StackToken::String(_), StackToken::String(_)) => true,
-            (StackToken::Boolean(_), StackToken::Boolean(_)) => true,
-            (StackToken::Block(_), StackToken::Block(_)) => true,
-            (StackToken::Binding(_), StackToken::Binding(_)) => true,
-            (StackToken::List(_), StackToken::List(_)) => true,
-            (StackToken::Err(_), StackToken::Err(_)) => true,
-            (StackToken::Operation(_), StackToken::Operation(_)) => true,
-            (StackToken::Empty, StackToken::Empty) => true,
-            (_, _) => false
-        }
-    }
-}
-*/
+/////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 /// enumerator of operations, i.e. specific functions.
 pub enum Op {
