@@ -23,12 +23,16 @@ pub enum StackToken {
     Empty
 }
 
+/// Implements Add for StackTokens, with varying behaviour depending on the type.
 impl Add for StackToken {
     type Output = StackToken;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (StackToken::Num(v1), StackToken::Num(v2)) => StackToken::Num(v1 + v2),
+            (StackToken::String(s), StackToken::String(s2)) => {
+                StackToken::String(s.add(&s2))
+            }
             (_, _) => StackToken::Error("not valid operation".to_string())
         }
     }
