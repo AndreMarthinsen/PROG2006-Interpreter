@@ -18,32 +18,43 @@ pub enum StackToken {
     Block(Vec<StackToken>),
     Binding(String),
     List(Vec<StackToken>),
-    Error(String),
+    Error(StackError),
     Operation(Op),
     Empty
 }
 
 /// Implements Add for StackTokens, with varying behaviour depending on the type.
-impl Add for StackToken {
+impl<'a, 'b> Add<&'b StackToken> for &'a StackToken { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
     type Output = StackToken;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &'b StackToken) -> Self::Output {
         match (self, rhs) {
             (StackToken::Num(v1), StackToken::Num(v2)) => StackToken::Num(v1 + v2),
             (StackToken::String(s), StackToken::String(s2)) => {
-                StackToken::String(s.add(&s2))
+                StackToken::String(s.clone().add(&s2))
             }
-            (_, _) => StackToken::Error("not valid operation".to_string())
+            (_, StackToken::Num(_)) => StackToken::Error(StackError::InvalidLeft),
+            (_, StackToken::String(_)) => StackToken::Error(StackError::InvalidLeft),
+            (StackToken::Num(_), _) => StackToken::Error(StackError::InvalidRight),
+            (StackToken::String(_), _) => StackToken::Error(StackError::InvalidRight),
+            (_, _) => StackToken::Error(StackError::InvalidBoth)
         }
     }
 }
 
+
+
 //////////////////////////////// STACK ERROR //////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum StackError { // TODO: Keep as a single error type, or make specific variants?
+    // Arithmetic errors
     Overflow,
     ZeroDiv,
+    InvalidLeft,
+    InvalidRight,
+    InvalidBoth,
+    // Operational errors
     PopEmpty
 }
 
@@ -52,7 +63,10 @@ impl Display for StackError {
         match self {
             StackError::Overflow => write!(f, "err: numeric overflow"),
             StackError::ZeroDiv=> write!(f, "err: zero division"),
-            StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!")
+            StackError::InvalidLeft => write!(f, "err: invalid left hand operand"),
+            StackError::InvalidRight => write!(f, "err: invalid right hand operand"),
+            StackError::InvalidBoth => write!(f, "err: operands not defined for function"),
+            StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!"),
         }
     }
 }
@@ -63,7 +77,7 @@ impl Display for StackError {
 
 /////////////////////////// NUMERIC ///////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 /// Numeric encapsulates numeric types such as integers and floats, implementing
 /// basic arithmetic operations such as +, -, / and *.
 pub enum Numeric {
@@ -119,36 +133,36 @@ impl PartialEq for Numeric {
 
 /// Implements addition for the Numeric type. Int x Float operations
 /// will result in Float variants being returned.
-impl Add for Numeric {
+impl<'a, 'b> Add<&'b Numeric> for &'a Numeric {
     type Output = Numeric;
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &'b Numeric) -> Self::Output {
         binary_numerical(self, rhs, try_add)
     }
 }
 
 /// Implements subtraction for the Numeric type. Int x Float operations
 /// will result in Float variants being returned.
-impl Sub for Numeric {
+impl<'a, 'b> Sub<&'b Numeric> for &'a Numeric {
     type Output = Numeric;
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(self, rhs: &'b Numeric) -> Self::Output {
         binary_numerical(self, rhs, try_sub)
     }
 }
 
 /// Implements multiplication for the Numeric type. Int x Float operations
 /// will result in Float variants being returned.
-impl Mul for Numeric {
+impl<'a, 'b> Mul<&'b Numeric> for &'a Numeric {
     type Output = Numeric;
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(self, rhs: &'b Numeric) -> Self::Output {
         binary_numerical(self, rhs, try_mul)
     }
 }
 
 /// Implements division for the Numeric type. Int x Float operations
 /// will result in Float variants being returned.
-impl Div for Numeric {
+impl<'a, 'b> Div<&'b Numeric> for &'a Numeric {
     type Output = Numeric;
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(self, rhs: &'b Numeric) -> Self::Output {
         binary_numerical(self, rhs, try_div)
     }
 }
@@ -156,34 +170,34 @@ impl Div for Numeric {
 
 /// binary_numerical encapsulates binary operations for the Numeric enum type,
 /// allowing reduced repetition of pattern matching and error handling.
-fn binary_numerical(lhs: Numeric, rhs: Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
+fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
     match (lhs, rhs) {
         (Numeric::Int32(v1), Numeric::Int32(v2)) => {
-            match op(v1 as f64, v2 as f64) {
+            match op(*v1 as f64, *v2 as f64) {
                 Ok(val) => Numeric::Int32(val as i32),
                 Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Float64(v1), Numeric::Int32(v2)) => {
-            match op(v1, v2 as f64) {
+            match op(*v1, *v2 as f64) {
                 Ok(val) => Numeric::Float64(val),
                 Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Int32(v1), Numeric::Float64(v2)) => {
-            match op(v1 as f64, v2) {
+            match op(*v1 as f64, *v2) {
                 Ok(val) => Numeric::Float64(val),
                 Err(e) => Numeric::NumError(e)
             }
         },
         (Numeric::Float64(v1), Numeric::Float64(v2)) => {
-            match op(v1, v2) {
+            match op(*v1, *v2) {
                 Ok(val) => Numeric::Float64(val),
                 Err(e) => Numeric::NumError(e)
             }
         },
-        (Numeric::NumError(err), _) => Numeric::NumError(err),
-        (_, Numeric::NumError(err)) => Numeric::NumError(err)
+        (Numeric::NumError(err), _) => Numeric::NumError(err.clone()),
+        (_, Numeric::NumError(err)) => Numeric::NumError(err.clone())
     }
 }
 
