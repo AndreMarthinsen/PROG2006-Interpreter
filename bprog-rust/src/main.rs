@@ -2,14 +2,18 @@ use std::fmt::Error;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Read};
-use crate::parsing::{get_section, Op, parse, StackToken};
+use crate::parsing::{get_section, parse};
+use crate::token::{Op, StackToken};
 use crate::utility::get_tokens;
 
 mod stack;
 mod utility;
 mod parsing;
+mod token;
 
 fn main() {
+
+    /*
     let mut in_file = File::open("./test_program.txt").unwrap();
 
     let mut program_tokens= vec![];
@@ -52,5 +56,5 @@ fn main() {
         }
         stack.display_all_contents();
     };
-
+*/
 }
