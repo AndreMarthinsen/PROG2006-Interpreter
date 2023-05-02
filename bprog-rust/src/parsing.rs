@@ -4,7 +4,7 @@ use std::fmt;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
 use crate::stack::Stack;
-use crate::token::StackToken;
+use crate::token::Parsed;
 
 
 /// Parses a vector of string tokens into a list of stack tokens and a remainder.
@@ -39,8 +39,8 @@ use crate::token::StackToken;
 ///
 /// assert_eq!(remainder, vec!["test"]);
 /// ```
-pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
-    let mut parsed: Vec<StackToken> = vec![];
+pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
+    let mut parsed: Vec<Parsed> = vec![];
     loop {
         if let Some(t) = tokens.clone().get(0) {
             match t.as_str() {
@@ -51,7 +51,7 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
                     tokens = tokens[1..].to_vec();
                     let mut content = vec![];
                     (content, tokens) = parse(tokens.clone());
-                    parsed.push(if t == "{" { StackToken::Block(content.clone()) } else { StackToken::List(content.clone()) });
+                    parsed.push(if t == "{" { Parsed::Block(content.clone()) } else { Parsed::List(content.clone()) });
 
                 },
                 "\"" => {
@@ -60,13 +60,13 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<StackToken>, Vec<String>) {
                     match result {
                         Some((mut section, mut remainder)) => {
                             tokens = remainder;
-                            parsed.push(StackToken::String(section.join(" ")));
+                            parsed.push(Parsed::String(section.join(" ")));
                         }
                         None => {println!("didnt work");}
                     }
                 },
                 "True" | "False" => {
-                    parsed.push(StackToken::Boolean(t == "True"));
+                    parsed.push(Parsed::Boolean(t == "True"));
                     tokens = tokens[1..].to_vec()
                 },
                 other => {}

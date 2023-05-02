@@ -1,4 +1,3 @@
-use std::arch::asm;
 use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
@@ -11,81 +10,100 @@ use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 #[derive(Clone, Debug)]
 /// enumeration of stack values, allowing the stack to hold
 /// arbitrary types.
-pub enum StackToken {
+pub enum Parsed {
     Num(Numeric),
     String(String),
     Boolean(bool),
-    Block(Vec<StackToken>),
+    Block(Vec<Parsed>),
     Binding(String),
-    List(Vec<StackToken>),
+    List(Vec<Parsed>),
     Error(StackError),
     Operation(Op),
 }
 
 /// Implements Add for StackTokens, with varying behaviour depending on the type.
-impl<'a, 'b> Add<&'b StackToken> for &'a StackToken { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
-    type Output = StackToken;
+impl<'a, 'b> Add<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
+    type Output = Parsed;
 
-    fn add(self, rhs: &'b StackToken) -> Self::Output {
+    fn add(self, rhs: &'b Parsed) -> Self::Output {
         match (self, rhs) {
-            (StackToken::Num(v1), StackToken::Num(v2)) => StackToken::Num(v1 + v2),
-            (StackToken::String(s), StackToken::String(s2)) => {
-                StackToken::String(s.clone().add(&s2))
+            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 + v2),
+            (Parsed::String(s), Parsed::String(s2)) => {
+                Parsed::String(s.clone().add(&s2))
+            },
+            (Parsed::List(l1), Parsed::List(l2)) => {
+                let mut l1c = l1.clone();
+                let mut l2c = l2.clone();
+                l1c.append(&mut l2c);
+                Parsed::List(l1c)
             }
-            (_, StackToken::Num(_)) => StackToken::Error(StackError::InvalidLeft),
-            (_, StackToken::String(_)) => StackToken::Error(StackError::InvalidLeft),
-            (StackToken::Num(_), _) => StackToken::Error(StackError::InvalidRight),
-            (StackToken::String(_), _) => StackToken::Error(StackError::InvalidRight),
-            (_, _) => StackToken::Error(StackError::InvalidBoth)
+            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
+            (_, Parsed::String(_)) => Parsed::Error(StackError::InvalidLeft),
+            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
+            (Parsed::String(_), _) => Parsed::Error(StackError::InvalidRight),
+            (_, _) => Parsed::Error(StackError::InvalidBoth)
         }
     }
 }
 
-impl StackToken {
+impl Parsed {
     /// Defines what can be StackToken variants can interpreted as true,
     /// and under which conditions they are considered true.
     fn is_true(&self) -> bool {
         match self {
-            StackToken::Num(val) => *val != Numeric::Int32(0),
-            StackToken::Boolean(val) => *val,
-            StackToken::String(s) => !s.is_empty(),
-            StackToken::List(l) => !l.is_empty(),
-            StackToken::Error(_) => false,
+            Parsed::Num(val) => *val != Numeric::Int32(0),
+            Parsed::Boolean(val) => *val,
+            Parsed::String(s) => !s.is_empty(),
+            Parsed::List(l) => !l.is_empty(),
+            Parsed::Error(_) => false,
             _ => false,
         }
     }
 }
 
 /// Uses the bitwise and operator as a shorthand for logical AND.
-impl<'a, 'b> BitAnd<&'b StackToken> for &'a StackToken {
-    type Output = StackToken;
+impl<'a, 'b> BitAnd<&'b Parsed> for &'a Parsed {
+    type Output = Parsed;
 
-    fn bitand(self, rhs: &'b StackToken) -> Self::Output {
-        StackToken::Boolean(self.is_true() && rhs.is_true())
+    fn bitand(self, rhs: &'b Parsed) -> Self::Output {
+        Parsed::Boolean(self.is_true() && rhs.is_true())
     }
 }
 
 /// Uses the bitwise or operator as shorthand for logical OR.
-impl<'a, 'b> BitOr<&'b StackToken> for &'a StackToken {
-    type Output = StackToken;
+impl<'a, 'b> BitOr<&'b Parsed> for &'a Parsed {
+    type Output = Parsed;
 
-    fn bitor(self, rhs: &'b StackToken) -> Self::Output {
-        StackToken::Boolean(self.is_true() || rhs.is_true())
+    fn bitor(self, rhs: &'b Parsed) -> Self::Output {
+        Parsed::Boolean(self.is_true() || rhs.is_true())
     }
 }
 
 
+impl PartialEq for Parsed {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Parsed::Num(v1), Parsed::Num(v2)) => v1 == v2,
+            (Parsed::String(s1), Parsed::String(s2)) => s1.eq(s2),
+            (Parsed::List(l1), Parsed::List(l2)) => l1.eq(l2),
+            (Parsed::Boolean(b1), Parsed::Boolean(b2)) => b1 == b2,
+            (Parsed::Error(err1), Parsed::Error(err2)) => err1 == err2,
+            (_, _) => false
+        }
+    }
+}
+
 
 /// Implements Display for StackToken, allowing a pretty print of the
 /// contents of a stack and in-program representation in general.
-impl Display for StackToken {
+impl Display for Parsed {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            StackToken::Error(err) => write!(f, "{}", err),
-            StackToken::String(s) => write!(f, "\"{}\"", s),
-            StackToken::Boolean(b) => write!(f, "{}", b),
-            StackToken::Binding(s) => write!(f, "{}", s),
-            StackToken::List(list) => {
+            Parsed::Error(err) => write!(f, "{}", err),
+            Parsed::String(s) => write!(f, "\"{}\"", s),
+            Parsed::Boolean(b) => write!(f, "{}", b),
+            Parsed::Binding(s) => write!(f, "{}", s),
+            Parsed::List(list) => {
                 write!(f, "[")?;
                 let mut iter = list.iter();
                 if let Some(first) = iter.next() {
@@ -96,8 +114,8 @@ impl Display for StackToken {
                 }
                 write!(f, "]")
             },
-            StackToken::Operation(op) => write!(f, "op: {:?}", op),
-            StackToken::Block(c) => {
+            Parsed::Operation(op) => write!(f, "op: {:?}", op),
+            Parsed::Block(c) => {
                 write!(f, "{{ ")?;
                 let mut iter = c.iter();
                 if let Some(first) = iter.next() {
