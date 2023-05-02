@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
 use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
 use std::fmt::{Debug, Display, Error, Formatter, write};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
+
 
 
 //////////////////// STACK TOKEN //////////////////////////////////////////////////////////////////
@@ -60,6 +62,7 @@ impl Parsed {
         }
     }
 }
+
 
 /// Uses the bitwise and operator as a shorthand for logical AND.
 impl<'a, 'b> BitAnd<&'b Parsed> for &'a Parsed {
@@ -142,7 +145,8 @@ pub enum StackError { // TODO: Keep as a single error type, or make specific var
     InvalidRight,
     InvalidBoth,
     // Operational errors
-    PopEmpty
+    PopEmpty,
+    InternalBug
 }
 
 impl Display for StackError {
@@ -154,6 +158,7 @@ impl Display for StackError {
             StackError::InvalidRight => write!(f, "err: invalid right hand operand"),
             StackError::InvalidBoth => write!(f, "err: operands not defined for function"),
             StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!"),
+            StackError::InternalBug => write!(f, "err: something has gone wrong!")
         }
     }
 }
@@ -173,6 +178,30 @@ pub enum Numeric {
     NumError(StackError)
 }
 
+impl Numeric {
+    fn is_true(&self) -> bool {
+        match self {
+            Numeric::Int32(val) => *val != 0,
+            Numeric::Float64(val) => *val != 0.0,
+            Numeric::NumError(_) => false,
+        }
+    }
+
+    fn as_i32(& self) -> Numeric {
+        match self {
+            Numeric::Float64(val) => Numeric::Int32(*val as i32),
+            non_convertible => *non_convertible
+        }
+    }
+
+    fn as_f64(& self) -> Numeric {
+        match self {
+            Numeric::Int32(val) => Numeric::Float64(*val as f64),
+            non_convertible => *non_convertible
+        }
+    }
+}
+
 /// Implements Display for the Numeric enum type.
 /// Floats are always displayed with at least 1 precision.
 impl Display for Numeric {
@@ -188,6 +217,33 @@ impl Display for Numeric {
             }
             Numeric::NumError(err) => write!(f, "{}", err)
         }
+    }
+}
+
+impl PartialOrd for Numeric {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self.as_f64(), other.as_f64()) {
+            (Numeric::Float64(v1), Numeric::Float64(v2)) => {
+                v1.partial_cmp(&v2)
+            },
+            (_, _) => None
+        }
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        binary_numerical(self, other, try_lt).is_true()
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        binary_numerical(self, other, try_le).is_true()
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        binary_numerical(self, other, try_gt).is_true()
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        binary_numerical(self, other, try_ge).is_true()
     }
 }
 
@@ -259,6 +315,33 @@ impl<'a, 'b> Div<&'b Numeric> for &'a Numeric {
 /// allowing reduced repetition of pattern matching and error handling.
 fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
     match (lhs, rhs) {
+        (Numeric::NumError(err), _) => Numeric::NumError(err.clone()),
+        (_, Numeric::NumError(err)) => Numeric::NumError(err.clone()),
+        (Numeric::Int32(v1), Numeric::Int32(v2)) => {
+            match op(*v1 as f64, *v2 as f64) {
+                Ok(val) => Numeric::Int32(val as i32),
+                Err(e) => Numeric::NumError(e)
+            }
+        },
+        (mut left, mut right) => {
+            match (left.as_f64(), right.as_f64()) {
+                (Numeric::Float64(v1), Numeric::Float64(v2)) => {
+                    match op(v1, v2) {
+                        Ok(val) => Numeric::Float64(val),
+                        Err(e) => Numeric::NumError(e)
+                    }
+                },
+                (_, _)=> Numeric::NumError(StackError::InternalBug)
+            }
+        }
+    }
+}
+
+/*
+/// binary_numerical encapsulates binary operations for the Numeric enum type,
+/// allowing reduced repetition of pattern matching and error handling.
+fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
+    match (lhs, rhs) {
         (Numeric::Int32(v1), Numeric::Int32(v2)) => {
             match op(*v1 as f64, *v2 as f64) {
                 Ok(val) => Numeric::Int32(val as i32),
@@ -287,6 +370,7 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
         (_, Numeric::NumError(err)) => Numeric::NumError(err.clone())
     }
 }
+ */
 
 // TODO: Error handling for these
 fn try_add(a: f64, b: f64) -> Result<f64, StackError> {
@@ -307,6 +391,22 @@ fn try_div(a: f64, b: f64) -> Result<f64, StackError> {
     } else {
         Err(StackError::ZeroDiv)
     }
+}
+
+fn try_lt(a: f64, b:f64) -> Result<f64, StackError> {
+    Ok((a < b) as i32 as f64)
+}
+
+fn try_le(a: f64, b:f64) -> Result<f64, StackError> {
+    Ok((a <= b) as i32 as f64)
+}
+
+fn try_gt(a: f64, b:f64) -> Result<f64, StackError> {
+    Ok((a > b) as i32 as f64)
+}
+
+fn try_ge(a: f64, b:f64) -> Result<f64, StackError> {
+    Ok((a >= b) as i32 as f64)
 }
 
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
