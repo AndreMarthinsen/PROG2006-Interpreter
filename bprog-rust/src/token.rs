@@ -6,7 +6,6 @@ use std::fmt::{Debug, Display, Error, Formatter, write};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 
 
-
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
@@ -490,7 +489,18 @@ fn try_ge(a: f64, b: f64) -> Result<f64, StackError> {
 
 /// enumerator of operations, i.e. specific functions.
 pub enum Op {
-    Void
+    Void,
+    /*
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    LT,
+    LE,
+    GE,
+    GT,
+*/
 }
 
 
