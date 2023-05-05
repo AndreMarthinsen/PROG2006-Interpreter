@@ -10,7 +10,7 @@ use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
-/// enumeration of stack values, allowing the stack to hold
+/// enumeration of stack values, allowing a container to hold
 /// arbitrary types.
 pub enum Parsed {
     Num(Numeric),
@@ -90,6 +90,7 @@ type Output = Parsed;
     }
 }
 
+// Parsed methods
 impl Parsed {
     /// Defines what can be StackToken variants can interpreted as true,
     /// and under which conditions they are considered true.
@@ -124,7 +125,14 @@ impl<'a, 'b> BitOr<&'b Parsed> for &'a Parsed {
     }
 }
 
-
+/// Implements PartialEq for Parsed.
+///
+/// # Safety
+///
+/// Only the Num, String, List, Boolean and Error variants are properly equatable,
+/// but as only a boolean is returned, there is no way to tell from usage of the function
+/// alone to tell if the operation was legal to begin with.
+///
 impl PartialEq for Parsed {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -177,9 +185,15 @@ impl Display for Parsed {
     }
 }
 
+
+
+
+
 //////////////////////////////// STACK ERROR //////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, PartialEq, Copy)]
+/// StackError represents various computational errors that can occur during program
+/// run-time, such as overflows, mismatched operands, popping of an empty stack, and others.
 pub enum StackError { // TODO: Keep as a single error type, or make specific variants?
     // Arithmetic errors
     Overflow,
@@ -192,6 +206,8 @@ pub enum StackError { // TODO: Keep as a single error type, or make specific var
     InternalBug
 }
 
+/// Implements Display for StackError, writing "err: <specific error message>"
+/// for each StackError variant.
 impl Display for StackError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -221,7 +237,16 @@ pub enum Numeric {
     NumError(StackError)
 }
 
+// Numeric methods
 impl Numeric {
+
+    /// Allows implicit conversion from numeric to boolean by considering any
+    /// non zero values as true.
+    ///
+    /// # Safety
+    ///
+    /// This function returns false for NumErrors, meaning its use gives no
+    /// indication whether self is a valid numeric representation or not.
     fn is_true(&self) -> bool {
         match self {
             Numeric::Int32(val) => *val != 0,
@@ -230,6 +255,8 @@ impl Numeric {
         }
     }
 
+    /// Attempts to return self converted from any enum variant to Numeric::Int.
+    /// If the type cannot be converted to Int, it returns itself.
     fn as_i32(& self) -> Numeric {
         match self {
             Numeric::Float64(val) => Numeric::Int32(*val as i32),
@@ -237,6 +264,8 @@ impl Numeric {
         }
     }
 
+    /// Attempts to return self converted from any enum variant to Numeric::Float.
+    /// If the type cannot be converted to Int, it returns itself.
     fn as_f64(& self) -> Numeric {
         match self {
             Numeric::Int32(val) => Numeric::Float64(*val as f64),
@@ -263,7 +292,13 @@ impl Display for Numeric {
     }
 }
 
+/// Implements PartialOrd for Numeric. Relies on binary_numerical with
+/// the try_* lt, le, gt and ge functions for actual logic.
+///
+/// Note that partial_cmp returns an Ordering enum only if the types match
+/// in a way that allows implicit conversion, such as int int or float int.
 impl PartialOrd for Numeric {
+
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.as_f64(), other.as_f64()) {
             (Numeric::Float64(v1), Numeric::Float64(v2)) => {
@@ -293,6 +328,17 @@ impl PartialOrd for Numeric {
 /// Implements PartialEq for the Numeric type.
 /// Allows implicit type conversion between numerical types such as i32 and f64,
 /// allowing comparisons such as 5 == 5.0, which becomes 5.0 == 5.0
+///
+/// # Usage
+///
+/// Can be used to check if two values are the same, but it can also be used to check
+/// for specific NumErrors.
+///
+/// # Safety
+///
+/// Makes use of type conversion, and for large values this may not always work as expected
+/// due to floating point precision.
+///
 impl PartialEq for Numeric {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -354,8 +400,16 @@ impl<'a, 'b> Div<&'b Numeric> for &'a Numeric {
 }
 
 
-/// binary_numerical encapsulates binary operations for the Numeric enum type,
-/// allowing reduced repetition of pattern matching and error handling.
+/// binary_numerical is a function that encapsulates binary operations for the Numeric enum type.
+///
+/// # Arguments
+///
+/// * `lhs` - Left hand operand
+///
+/// * `rhs`- Right hand operand
+///
+/// * `op`- a binary function expecting two f64 values
+// TODO: Add specific op for int int operations to avoid problems with precision for i128?
 fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
     match (lhs, rhs) {
         (Numeric::NumError(err), _) => Numeric::NumError(err.clone()),
@@ -374,26 +428,33 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
                         Err(e) => Numeric::NumError(e)
                     }
                 },
-                (_, _)=> Numeric::NumError(StackError::InternalBug)
+                // Should never occur if type system is properly set up.
+                (_, _)=> panic!("Encountered undefined type mismatch in binary_numerical.")
             }
         }
     }
 }
 
-
-// TODO: Error handling for these
+/// try_add is a function that adds two f64 numbers together and returns the result as a Result<f64, StackError>.
+/// It handles any errors related to the arithmetic operation, returning a StackError in the event of a failed operation.
 fn try_add(a: f64, b: f64) -> Result<f64, StackError> {
     Ok(a + b)
 }
 
+/// try_sub is a function that subtracts two f64 numbers and returns the result as a Result<f64, StackError>.
+/// It handles any errors related to the arithmetic operation, returning a StackError in the event of a failed operation.
 fn try_sub(a: f64, b: f64) -> Result<f64, StackError> {
     Ok(a - b)
 }
 
+/// try_mul is a function that multiplies two f64 numbers together and returns the result as a Result<f64, StackError>.
+/// It handles any errors related to the arithmetic operation, returning a StackError in the event of a failed operation.
 fn try_mul(a: f64, b: f64) -> Result<f64, StackError> {
     Ok(a * b)
 }
 
+/// try_div is a function that divides two f64 numbers and returns the result as a Result<f64, StackError>.
+/// It handles any errors related to the arithmetic operation, returning a StackError with the ZeroDiv variant in the event of a zero divisor.
 fn try_div(a: f64, b: f64) -> Result<f64, StackError> {
     if b != 0.0 {
         Ok(a / b)
@@ -402,22 +463,29 @@ fn try_div(a: f64, b: f64) -> Result<f64, StackError> {
     }
 }
 
-fn try_lt(a: f64, b:f64) -> Result<f64, StackError> {
+/// try_lt is a function that compares two f64 numbers and returns 1.0 if the first is less than the second, and 0.0 otherwise.
+/// It handles any errors related to the logical operation, returning a StackError in the event of a failed operation.
+fn try_lt(a: f64, b: f64) -> Result<f64, StackError> {
     Ok((a < b) as i32 as f64)
 }
 
-fn try_le(a: f64, b:f64) -> Result<f64, StackError> {
+/// try_le is a function that compares two f64 numbers and returns 1.0 if the first is less than or equal to the second, and 0.0 otherwise.
+/// It handles any errors related to the logical operation, returning a StackError in the event of a failed operation.
+fn try_le(a: f64, b: f64) -> Result<f64, StackError> {
     Ok((a <= b) as i32 as f64)
 }
 
-fn try_gt(a: f64, b:f64) -> Result<f64, StackError> {
+/// try_gt is a function that compares two f64 numbers and returns 1.0 if the first is greater than the second, and 0.0 otherwise.
+/// It handles any errors related to the logical operation, returning a StackError in the event of a failed operation.
+fn try_gt(a: f64, b: f64) -> Result<f64, StackError> {
     Ok((a > b) as i32 as f64)
 }
 
-fn try_ge(a: f64, b:f64) -> Result<f64, StackError> {
+/// try_ge is a function that compares two f64 numbers and returns 1.0 if the first is greater than or equal to the second, and 0.0 otherwise.
+/// It handles any errors related to the logical operation, returning a StackError in the event of a failed operation.
+fn try_ge(a: f64, b: f64) -> Result<f64, StackError> {
     Ok((a >= b) as i32 as f64)
 }
-
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 /// enumerator of operations, i.e. specific functions.
