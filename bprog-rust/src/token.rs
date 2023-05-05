@@ -7,7 +7,7 @@ use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 
 
 
-//////////////////// STACK TOKEN //////////////////////////////////////////////////////////////////
+//////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
 /// enumeration of stack values, allowing the stack to hold
@@ -43,6 +43,48 @@ impl<'a, 'b> Add<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> fo
             (_, Parsed::String(_)) => Parsed::Error(StackError::InvalidLeft),
             (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
             (Parsed::String(_), _) => Parsed::Error(StackError::InvalidRight),
+            (_, _) => Parsed::Error(StackError::InvalidBoth)
+        }
+    }
+}
+
+/// Implements Sub for StackTokens, with varying behaviour depending on the type.
+impl<'a, 'b> Sub<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
+type Output = Parsed;
+
+    fn sub(self, rhs: &'b Parsed) -> Self::Output {
+        match (self, rhs) {
+            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 - v2),
+            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
+            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
+            (_, _) => Parsed::Error(StackError::InvalidBoth)
+        }
+    }
+}
+
+/// Implements Mul for StackTokens, with varying behaviour depending on the type.
+impl<'a, 'b> Mul<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
+type Output = Parsed;
+
+    fn mul(self, rhs: &'b Parsed) -> Self::Output {
+        match (self, rhs) {
+            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 * v2),
+            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
+            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
+            (_, _) => Parsed::Error(StackError::InvalidBoth)
+        }
+    }
+}
+
+/// Implements Div for StackTokens, with varying behaviour depending on the type.
+impl<'a, 'b> Div<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> for &'a Numeric
+type Output = Parsed;
+
+    fn div(self, rhs: &'b Parsed) -> Self::Output {
+        match (self, rhs) {
+            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 / v2),
+            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
+            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
             (_, _) => Parsed::Error(StackError::InvalidBoth)
         }
     }
@@ -129,7 +171,8 @@ impl Display for Parsed {
                 }
                 write!(f, " }}")
             },
-            _ => write!(f, "")
+            Parsed::Num(n) => write!(f, "{}", n),
+            _ => write!(f, "something else") //TODO: Error here?
         }
     }
 }
@@ -337,40 +380,6 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
     }
 }
 
-/*
-/// binary_numerical encapsulates binary operations for the Numeric enum type,
-/// allowing reduced repetition of pattern matching and error handling.
-fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64, StackError>) -> Numeric {
-    match (lhs, rhs) {
-        (Numeric::Int32(v1), Numeric::Int32(v2)) => {
-            match op(*v1 as f64, *v2 as f64) {
-                Ok(val) => Numeric::Int32(val as i32),
-                Err(e) => Numeric::NumError(e)
-            }
-        },
-        (Numeric::Float64(v1), Numeric::Int32(v2)) => {
-            match op(*v1, *v2 as f64) {
-                Ok(val) => Numeric::Float64(val),
-                Err(e) => Numeric::NumError(e)
-            }
-        },
-        (Numeric::Int32(v1), Numeric::Float64(v2)) => {
-            match op(*v1 as f64, *v2) {
-                Ok(val) => Numeric::Float64(val),
-                Err(e) => Numeric::NumError(e)
-            }
-        },
-        (Numeric::Float64(v1), Numeric::Float64(v2)) => {
-            match op(*v1, *v2) {
-                Ok(val) => Numeric::Float64(val),
-                Err(e) => Numeric::NumError(e)
-            }
-        },
-        (Numeric::NumError(err), _) => Numeric::NumError(err.clone()),
-        (_, Numeric::NumError(err)) => Numeric::NumError(err.clone())
-    }
-}
- */
 
 // TODO: Error handling for these
 fn try_add(a: f64, b: f64) -> Result<f64, StackError> {
