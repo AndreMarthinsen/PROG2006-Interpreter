@@ -20,7 +20,7 @@ pub enum Parsed {
     String(String),
     Boolean(bool),
     Block(Vec<Parsed>),
-    Binding(String),
+    Symbol(String),
     List(Vec<Parsed>),
     Error(StackError),
     Operation(Op),
@@ -162,7 +162,7 @@ impl Display for Parsed {
             } else {
                 write!(f, "False")
             },
-            Parsed::Binding(s) => write!(f, "{}", s),
+            Parsed::Symbol(s) => write!(f, "{}", s),
             Parsed::List(list) => {
                 write!(f, "[")?;
                 let mut iter = list.iter();
