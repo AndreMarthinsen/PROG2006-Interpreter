@@ -99,7 +99,7 @@ impl Parsed {
     /// and under which conditions they are considered true.
     fn is_true(&self) -> bool {
         match self {
-            Parsed::Num(val) => *val != Numeric::Int32(0),
+            Parsed::Num(val) => *val != Numeric::Integer(0),
             Parsed::Boolean(val) => *val,
             Parsed::String(s) => !s.is_empty(),
             Parsed::List(l) => !l.is_empty(),
@@ -157,7 +157,11 @@ impl Display for Parsed {
         match self {
             Parsed::Error(err) => write!(f, "{}", err),
             Parsed::String(s) => write!(f, "\"{}\"", s),
-            Parsed::Boolean(b) => write!(f, "{}", b),
+            Parsed::Boolean(b) => if *b {
+                write!(f, "True")
+            } else {
+                write!(f, "False")
+            },
             Parsed::Binding(s) => write!(f, "{}", s),
             Parsed::List(list) => {
                 write!(f, "[")?;
