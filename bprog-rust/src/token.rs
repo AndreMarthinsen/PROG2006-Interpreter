@@ -4,11 +4,12 @@ use std::fmt;
 use num::traits::CheckedAdd;
 use std::fmt::{Debug, Display, Error, Formatter, write};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
+use std::str::FromStr;
 
 
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 /// enumeration of stack values, allowing a container to hold
 /// arbitrary types.
 pub enum Parsed {
@@ -485,6 +486,10 @@ fn try_gt(a: f64, b: f64) -> Result<f64, StackError> {
 fn try_ge(a: f64, b: f64) -> Result<f64, StackError> {
     Ok((a >= b) as i32 as f64)
 }
+
+
+
+
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 #[derive(Clone)]
@@ -570,4 +575,48 @@ impl Display for Op {
     }
 }
 
+/// implements FromStr for Op, allowing the use of .parse() to get Op directly
+/// from a string.
+impl FromStr for Op {
+    type Err = String;  // TODO: StackError? Other?
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "print" => Ok(Op::IOPrint),
+            "read" => Ok(Op::IORead),
+            "parseInteger" => Ok(Op::ParseInt),
+            "parseFloat" => Ok(Op::ParseFloat),
+            "parseWords" => Ok(Op::ParseWords),
+            "+" => Ok(Op::Add),
+            "-" => Ok(Op::Sub),
+            "*" => Ok(Op::Mul),
+            "/" => Ok(Op::Div),
+            "div" => Ok(Op::IntDiv),
+            "<" => Ok(Op::LT),
+            ">" => Ok(Op::GT),
+            "==" => Ok(Op::EQ),
+            "&&" => Ok(Op::And),
+            "||" => Ok(Op::Or),
+            "not" => Ok(Op::Not),
+            "head" => Ok(Op::ListHead),
+            "tail" => Ok(Op::ListTail),
+            "empty" => Ok(Op::ListEmpty),
+            "length" => Ok(Op::ListLength),
+            "cons" => Ok(Op::ListCons),
+            "append" => Ok(Op::ListAppend),
+            "each" => Ok(Op::Each),
+            "map" => Ok(Op::Map),
+            "foldl" => Ok(Op::Foldl),
+            "if" => Ok(Op::If),
+            "loop" => Ok(Op::Loop),
+            "times" => Ok(Op::Times),
+            "exec" => Ok(Op::Exec),
+            ":=" => Ok(Op::Assign),
+            "fun" => Ok(Op::AssignFunc),
+            "'" => Ok(Op::AsSymbol),
+            "eval" => Ok(Op::EvalSymbol),
+            _ => Err(format!("unknown operation: {}", s)),
+        }
+    }
+}
 
