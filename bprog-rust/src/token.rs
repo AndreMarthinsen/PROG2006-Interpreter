@@ -166,7 +166,7 @@ impl Display for Parsed {
                 }
                 write!(f, "]")
             },
-            Parsed::Operation(op) => write!(f, "op: {:?}", op),
+            Parsed::Operation(op) => write!(f, "op: {}", op),
             Parsed::Block(c) => {
                 write!(f, "{{ ")?;
                 let mut iter = c.iter();
@@ -487,41 +487,85 @@ fn try_ge(a: f64, b: f64) -> Result<f64, StackError> {
 }
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 /// enumerator of operations, i.e. specific functions.
 pub enum Op {
-    Void,
-    /*
+  //  Void,
+    IOPrint,
+    IORead,
+    ParseInt,
+    ParseFloat,
+    ParseWords,
     Add,
     Sub,
     Mul,
     Div,
-    Eq,
+    IntDiv,
     LT,
-    LE,
-    GE,
     GT,
-*/
-}
-
-
-impl Clone for Op {
-    fn clone(&self) -> Self {
-        match self {
-            Op::Void => Op::Void,
-//            Operation::Arithmetic(f) => Operation::Arithmetic(),
-        }
-    }
+    EQ,
+    And,
+    Or,
+    Not,
+    ListHead,
+    ListTail,
+    ListEmpty,
+    ListLength,
+    ListCons,
+    ListAppend,
+    Each,
+    Map,
+    Foldl,
+    If,
+    Loop,
+    Times,
+    Exec,
+    Assign,
+    AssignFunc,
+    AsSymbol,
+    EvalSymbol
 }
 
 
 
 
 /// Display for Operations
-impl Debug for Op {
+impl Display for Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Op::Void => write!(f, "Void"),
-            //  Op::Arithmetic(_) => write!(f, "Arithmetic"),
+            Op::IOPrint => write!(f, "print"),
+            Op::IORead => write!(f, "read"),
+            Op::ParseInt => write!(f, "parseInteger"),
+            Op::ParseFloat => write!(f, "parseFloat"),
+            Op::ParseWords => write!(f, "parseWords"),
+            Op::Add => write!(f, "+"),
+            Op::Sub => write!(f, "-"),
+            Op::Mul => write!(f, "*"),
+            Op::Div => write!(f, "/"),
+            Op::IntDiv => write!(f, "div"),
+            Op::LT => write!(f, "<"),
+            Op::GT => write!(f, ">"),
+            Op::EQ => write!(f, "=="),
+            Op::And => write!(f, "&&"),
+            Op::Or => write!(f, "||"),
+            Op::Not => write!(f, "not"),
+            Op::ListHead => write!(f, "head"),
+            Op::ListTail => write!(f, "tail"),
+            Op::ListEmpty => write!(f, "empty"),
+            Op::ListLength => write!(f, "length"),
+            Op::ListCons => write!(f, "cons"),
+            Op::ListAppend => write!(f, "append"),
+            Op::Each => write!(f, "each"),
+            Op::Map => write!(f, "map"),
+            Op::Foldl => write!(f, "foldl"),
+            Op::If => write!(f, "if"),
+            Op::Loop => write!(f, "loop"),
+            Op::Times => write!(f, "times"),
+            Op::Exec => write!(f, "exec"),
+            Op::Assign => write!(f, ":="),
+            Op::AssignFunc => write!(f, "fun"),
+            Op::AsSymbol => write!(f, "'"),
+            Op::EvalSymbol => write!(f, "eval"),
         }
     }
 }
