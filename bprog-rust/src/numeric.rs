@@ -143,16 +143,16 @@ impl PartialEq for Numeric {
 
 /// Implements FromStr for Numeric for parsing directly from string.
 impl FromStr for Numeric {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(val) = token.parse::<i128>() {
+        if let Ok(val) = s.parse::<i128>() {
             return Ok(Numeric::Integer(val));
         }
-        if let Ok(val) = token.parse::<f64>() {
+        if let Ok(val) = s.parse::<f64>() {
             return Ok(Numeric::Float(val));
         }
-        Self::Err
+        Err("not parsable as Numeric".to_string())
     }
 }
 
