@@ -8,7 +8,7 @@ use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::stack_error::StackError;
 use crate::op::Op;
-
+use crate::types::Type;
 
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
@@ -41,6 +41,12 @@ impl<'a, 'b> Add<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> fo
                 let mut l2c = l2.clone();
                 l1c.append(&mut l2c);
                 Parsed::List(l1c)
+            },
+            (elem, Parsed::List(old_list)) => {
+                let mut new_list:Vec<Parsed> = Vec::new();
+                new_list.push(elem.clone());
+                new_list.append(&mut old_list.clone());
+                Parsed::List(new_list)
             }
             (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
             (_, Parsed::String(_)) => Parsed::Error(StackError::InvalidLeft),
@@ -107,6 +113,34 @@ impl Parsed {
             _ => false,
         }
     }
+
+    pub fn get_type(&self) -> Type {
+        match self {
+            Parsed::Num(numerical) => {
+                match numerical {
+                    Numeric::Integer(_) => Type::Integer,
+                    Numeric::Float(_) => Type::Float,
+                    Numeric::NumError(_) => Type::Error
+                }
+            }
+            Parsed::String(_) => Type::String,
+            Parsed::Boolean(_) => Type::Bool,
+            Parsed::Block(_) => Type::Quotation,
+            Parsed::Symbol(_) => Type::Symbol,
+            Parsed::List(_) => Type::List,
+            Parsed::Error(_) => Type::Error,
+            Parsed::Operation(op) => Type::Function(op.get_signature())
+        }
+    }
+
+    pub fn size (&self) -> Parsed {
+        match self {
+            Parsed::String(s) => Parsed::Num(Numeric::Integer(s.len() as i128)),
+            Parsed::Block(b) => Parsed::Num(Numeric::Integer(b.len() as i128)),
+            Parsed::List(l) => Parsed::Num(Numeric::Integer(l.len() as i128)),
+            _ => Parsed::Error(StackError::InvalidLeft)
+        }
+    }
 }
 
 
@@ -169,7 +203,7 @@ impl Display for Parsed {
                 if let Some(first) = iter.next() {
                     write!(f, "{}", first)?;
                     for item in iter {
-                        write!(f, " {}", item)?;
+                        write!(f, ",{}", item)?;
                     }
                 }
                 write!(f, "]")
@@ -189,6 +223,13 @@ impl Display for Parsed {
             Parsed::Num(n) => write!(f, "{}", n),
             _ => write!(f, "something else") //TODO: Error here?
         }
+    }
+}
+
+/// Wraps Display for simplicity
+impl Debug for Parsed {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
