@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
+use std::str::FromStr;
 use crate::stack_error::StackError;
 
 #[derive(Clone, Debug, Copy)]
@@ -137,6 +138,21 @@ impl PartialEq for Numeric {
             }
             _ => false
         }
+    }
+}
+
+/// Implements FromStr for Numeric for parsing directly from string.
+impl FromStr for Numeric {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(val) = token.parse::<i128>() {
+            return Ok(Numeric::Integer(val));
+        }
+        if let Ok(val) = token.parse::<f64>() {
+            return Ok(Numeric::Float(val));
+        }
+        Self::Err
     }
 }
 
