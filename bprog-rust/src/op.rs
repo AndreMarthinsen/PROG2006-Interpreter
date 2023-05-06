@@ -1,14 +1,21 @@
 
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
-use std::fmt;
+use std::{fmt, io};
 use std::fmt::{Display, Formatter};
+use std::io::{Read, Write};
 use std::str::FromStr;
+use crate::numeric::Numeric;
+use crate::parsed::Parsed;
+use crate::stack_error::StackError;
+use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, TypeClass, unary};
+use crate::types;
+
 
 #[derive(Clone)]
 /// enumerator of operations, i.e. specific functions.
 pub enum Op {
-    //  Void,
+    Void,
     IOPrint,
     IORead,
     ParseInt,
@@ -46,11 +53,167 @@ pub enum Op {
 
 
 
+impl Op {
+
+    pub fn exec_nullary(&self) -> Parsed {
+        match self {
+            Op::IORead => {
+                print!("input: ");
+                io::stdout().flush().unwrap();
+                let mut string = String::new();
+                if let Ok(_) = io::stdin().read_line(&mut string) {
+                    string.pop();
+                    Parsed::String(string)
+                } else {
+                    Parsed::Error(StackError::InvalidRight)
+                }
+            }
+            _ => Parsed::Error(StackError::InvalidRight)
+        }
+    }
+
+    pub fn exec_unary(&self, arg: Parsed) -> Parsed {
+        match self {
+            Op::IOPrint => {
+                println!("{}", arg);
+                Parsed::Operation(Op::Void)
+            },
+            Op::ListEmpty => {
+                Parsed::Boolean(arg.size() == Parsed::Num(Numeric::Integer(0)))
+            },
+            Op::ListLength =>  {
+                arg.size()
+            }
+            _ => Parsed::Error(StackError::InvalidBoth)
+        }
+    }
+
+    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        match self {
+            Op::Add => lhs + rhs,
+            Op::Sub => lhs - rhs,
+            Op::Mul => lhs * rhs,
+            Op::Div => lhs / rhs,
+            Op::IntDiv => lhs / rhs,
+            Op::EQ => Parsed::Boolean(lhs == rhs),
+            Op::And => lhs & rhs,
+            Op::Or => lhs | rhs,
+            Op::ListAppend => lhs + rhs,
+            Op::ListCons => lhs + rhs,
+            _ => Parsed::Error(StackError::InvalidBoth)
+        }
+    }
+
+    pub fn exec_temary(&self) {
+
+    }
+
+
+    pub fn get_signature(&self) -> Signature {
+        match self {
+            Op::Void => nullary(Constraint::Void),
+            Op::IOPrint =>
+                unary(Constraint::String, Constraint::Void),
+            Op::IORead =>
+                nullary(Constraint::String),
+            Op::ParseInt =>
+                unary(Constraint::String, Constraint::Integer),
+            Op::ParseFloat =>
+                unary(Constraint::String, Constraint::Float),
+            Op::ParseWords =>
+                unary(Constraint::String, Constraint::List),
+            Op::Add | Op::Sub | Op::Mul | Op::Div =>
+                homogenous_binary(Constraint::Num, Constraint::Num),
+            Op::IntDiv =>
+                homogenous_binary(Constraint::Integer, Constraint::Integer),
+            Op::LT | Op::GT | Op::EQ =>
+                homogenous_binary(Constraint::Ord, Constraint::Bool),
+            Op::And | Op::Or =>
+                homogenous_binary(Constraint::Boolean, Constraint::Bool),
+            Op::Not =>
+                unary(Constraint::Num, Constraint::Num),
+            Op::ListHead =>
+                unary(Constraint::List, Constraint::Any),
+            Op::ListTail =>
+                unary(Constraint::List, Constraint::List),
+            Op::ListEmpty => {
+                unary(Constraint::List, Constraint::Bool)
+            },
+            Op::ListLength => {
+                unary(Constraint::List, Constraint::Integer)
+            },
+            Op::ListCons => {
+                heterogeneous_binary(
+                    Constraint::Any,
+                    Constraint::List,
+                    Constraint::List
+                )
+            },
+            Op::ListAppend => {
+                homogenous_binary(Constraint::List, Constraint::List)
+            }
+            Op::Each => { //TODO: modifying arguments? quotations expected from tree.
+                let mut sig = unary(Constraint::List, Constraint::Void);
+                sig.modifers = Params::Unary(
+                    Constraint::Function(
+                        Box::new(unary(Constraint::Any, Constraint::Void))
+                    )
+                );
+                sig
+            },
+            Op::Map => {
+                unary(Constraint::List, Constraint::List)
+            },
+            Op::Foldl => {
+                heterogeneous_binary(
+                    Constraint::Any,
+                    Constraint::List,
+                    Constraint::Any
+                )
+            }
+            Op::If =>  {
+                unary(Constraint::Boolean, Constraint::Any)
+            },
+            Op::Loop => { // TODO: Very unclear how this one should work
+                nullary(Constraint::Void)
+            },
+            Op::Times => { // TODO: Ditto
+                unary(Constraint::Integer, Constraint::Any)
+            }
+            Op::Exec => {
+                unary(Constraint::Quotation, Constraint::Any)
+            }
+            Op::Assign => {
+                heterogeneous_binary(
+                    Constraint::Symbol,
+                    Constraint::Any,
+                    Constraint::Void
+                )
+            },
+            Op::AssignFunc => {
+                heterogeneous_binary(
+                    Constraint::Symbol,
+                    Constraint::Quotation,
+                    Constraint::Void
+                )
+            }
+            Op::AsSymbol => {
+                nullary(Constraint::Symbol)
+            }
+            Op::EvalSymbol => {
+                unary(Constraint::Symbol, Constraint::Any)
+            }
+        }
+    }
+}
+
+
 
 /// Display for Operations
 impl Display for Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Op::Void => write!(f, "()"),
             Op::IOPrint => write!(f, "print"),
             Op::IORead => write!(f, "read"),
             Op::ParseInt => write!(f, "parseInteger"),
