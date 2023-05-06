@@ -7,6 +7,7 @@ use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::stack_error::StackError;
+use crate::op::Op;
 
 
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
