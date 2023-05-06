@@ -51,12 +51,11 @@ impl<T:Clone + Display + Debug> Stack<T> {
 
     /// Prints the contents of the stack top to bottom left to right
     pub fn display_all_contents(&self) {
-        let mut output = String::from("top: ");
+        let mut output = String::from("");
         self.iter().for_each(|x| {
             output.push_str(&x.to_string());
             output.push(' ');
         });
-        output.push_str(" :bottom");
         println!("{}", output);
     }
 
