@@ -36,7 +36,7 @@ impl Numeric {
 
     /// Attempts to return self converted from any enum variant to Numeric::Int.
     /// If the type cannot be converted to Int, it returns itself.
-    fn as_i32(& self) -> Numeric {
+    fn as_integer(& self) -> Numeric {
         match self {
             Numeric::Float(val) => Numeric::Integer(*val as i128),
             non_convertible => *non_convertible
@@ -45,7 +45,7 @@ impl Numeric {
 
     /// Attempts to return self converted from any enum variant to Numeric::Float.
     /// If the type cannot be converted to Int, it returns itself.
-    fn as_f64(& self) -> Numeric {
+    fn as_float(& self) -> Numeric {
         match self {
             Numeric::Integer(val) => Numeric::Float(*val as f64),
             non_convertible => *non_convertible
@@ -79,7 +79,7 @@ impl Display for Numeric {
 impl PartialOrd for Numeric {
 
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self.as_f64(), other.as_f64()) {
+        match (self.as_float(), other.as_float()) {
             (Numeric::Float(v1), Numeric::Float(v2)) => {
                 v1.partial_cmp(&v2)
             },
@@ -215,7 +215,7 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
             }
         },
         (mut left, mut right) => {
-            match (left.as_f64(), right.as_f64()) {
+            match (left.as_float(), right.as_float()) {
                 (Numeric::Float(v1), Numeric::Float(v2)) => {
                     match op(v1, v2) {
                         Ok(val) => Numeric::Float(val),
