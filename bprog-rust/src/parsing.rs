@@ -4,7 +4,7 @@ use std::fmt;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
 use crate::stack::Stack;
-use crate::token::Parsed;
+use crate::parsed::Parsed;
 
 
 /// Parses a vector of string tokens into a list of stack tokens and a remainder.
