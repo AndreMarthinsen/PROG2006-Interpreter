@@ -174,7 +174,7 @@ impl Display for Parsed {
                 }
                 write!(f, "]")
             },
-            Parsed::Operation(op) => write!(f, "op: {}", op),
+            Parsed::Operation(op) => write!(f, "{}", op),
             Parsed::Block(c) => {
                 write!(f, "{{ ")?;
                 let mut iter = c.iter();
