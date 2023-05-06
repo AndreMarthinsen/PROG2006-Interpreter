@@ -10,8 +10,8 @@ use crate::stack_error::StackError;
 /// Numeric encapsulates numeric types such as integers and floats, implementing
 /// basic arithmetic operations such as +, -, / and *.
 pub enum Numeric {
-    Int32(i32),
-    Float64(f64),
+    Integer(i128),
+    Float(f64),
     NumError(StackError)
 }
 
@@ -27,8 +27,8 @@ impl Numeric {
     /// indication whether self is a valid numeric representation or not.
     fn is_true(&self) -> bool {
         match self {
-            Numeric::Int32(val) => *val != 0,
-            Numeric::Float64(val) => *val != 0.0,
+            Numeric::Integer(val) => *val != 0,
+            Numeric::Float(val) => *val != 0.0,
             Numeric::NumError(_) => false,
         }
     }
@@ -37,7 +37,7 @@ impl Numeric {
     /// If the type cannot be converted to Int, it returns itself.
     fn as_i32(& self) -> Numeric {
         match self {
-            Numeric::Float64(val) => Numeric::Int32(*val as i32),
+            Numeric::Float(val) => Numeric::Integer(*val as i128),
             non_convertible => *non_convertible
         }
     }
@@ -46,7 +46,7 @@ impl Numeric {
     /// If the type cannot be converted to Int, it returns itself.
     fn as_f64(& self) -> Numeric {
         match self {
-            Numeric::Int32(val) => Numeric::Float64(*val as f64),
+            Numeric::Integer(val) => Numeric::Float(*val as f64),
             non_convertible => *non_convertible
         }
     }
@@ -57,8 +57,8 @@ impl Numeric {
 impl Display for Numeric {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Numeric::Int32(v) => write!(f, "{}", v),
-            Numeric::Float64(v)=> {
+            Numeric::Integer(v) => write!(f, "{}", v),
+            Numeric::Float(v)=> {
                 if v.fract() == 0.0 {
                     write!(f, "{}.0", v.to_string())
                 } else {
@@ -79,7 +79,7 @@ impl PartialOrd for Numeric {
 
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self.as_f64(), other.as_f64()) {
-            (Numeric::Float64(v1), Numeric::Float64(v2)) => {
+            (Numeric::Float(v1), Numeric::Float(v2)) => {
                 v1.partial_cmp(&v2)
             },
             (_, _) => None
@@ -123,16 +123,16 @@ impl PartialEq for Numeric {
             (Numeric::NumError(err), Numeric::NumError(err2)) => {
                 err == err2
             }
-            (Numeric::Int32(v), Numeric::Int32(v2)) => {
+            (Numeric::Integer(v), Numeric::Integer(v2)) => {
                 v == v2
             }
-            (Numeric::Float64(v), Numeric::Int32(v2)) => {
+            (Numeric::Float(v), Numeric::Integer(v2)) => {
                 *v == *v2 as f64
             },
-            (Numeric::Int32(v), Numeric::Float64(v2)) => {
+            (Numeric::Integer(v), Numeric::Float(v2)) => {
                 *v as f64 == *v2
             },
-            (Numeric::Float64(v), Numeric::Float64(v2)) => {
+            (Numeric::Float(v), Numeric::Float(v2)) => {
                 v == v2
             }
             _ => false
@@ -192,17 +192,17 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
     match (lhs, rhs) {
         (Numeric::NumError(err), _) => Numeric::NumError(err.clone()),
         (_, Numeric::NumError(err)) => Numeric::NumError(err.clone()),
-        (Numeric::Int32(v1), Numeric::Int32(v2)) => {
+        (Numeric::Integer(v1), Numeric::Integer(v2)) => {
             match op(*v1 as f64, *v2 as f64) {
-                Ok(val) => Numeric::Int32(val as i32),
+                Ok(val) => Numeric::Integer(val as i128),
                 Err(e) => Numeric::NumError(e)
             }
         },
         (mut left, mut right) => {
             match (left.as_f64(), right.as_f64()) {
-                (Numeric::Float64(v1), Numeric::Float64(v2)) => {
+                (Numeric::Float(v1), Numeric::Float(v2)) => {
                     match op(v1, v2) {
-                        Ok(val) => Numeric::Float64(val),
+                        Ok(val) => Numeric::Float(val),
                         Err(e) => Numeric::NumError(e)
                     }
                 },
