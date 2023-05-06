@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
+use crate::numeric::Numeric;
 use crate::stack::Stack;
 use crate::parsed::Parsed;
+use crate::op::Op;
 
 
 /// Parses a vector of string tokens into a list of stack tokens and a remainder.
@@ -43,6 +45,16 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
     let mut parsed: Vec<Parsed> = vec![];
     loop {
         if let Some(t) = tokens.clone().get(0) {
+            if let Some(p) = parse_primitives(t) {
+                parsed.push(p);
+                tokens = tokens[1..].to_vec();
+                continue;
+            }
+            if let Some(p) = parse_operations(t) {
+                parsed.push(p);
+                tokens = tokens[1..].to_vec();
+                continue;
+            }
             match t.as_str() {
                 "}" | "]" =>  {
                     return (parsed.clone(), tokens[1..].to_vec())
@@ -107,6 +119,32 @@ pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<St
         },
         None => None // TODO: Error
     }
+}
+
+
+/// Parses Integer, Float and Boolean from a string.
+pub fn parse_primitives(token: & str) -> Option<Parsed> {
+    if let Ok(val) = token.parse::<Numeric>() {
+        return Some(Parsed::Num(val));
+    }
+    if token == "True" {
+        return Some(Parsed::Boolean(true))
+    }
+    if token == "False" {
+        return Some(Parsed::Boolean(false))
+    }
+    if let Ok(val) = token.parse::<f64>() {
+        return Some(Parsed::Num(Numeric::Float(val)));
+    }
+    return None;
+}
+
+
+pub fn parse_operations(token: & str) -> Option<Parsed> {
+    if let Ok(op) = token.parse::<Op>() {
+        return Some(Parsed::Operation(op))
+    }
+    None
 }
 
 
