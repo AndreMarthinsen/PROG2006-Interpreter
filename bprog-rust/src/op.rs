@@ -56,11 +56,15 @@ pub enum Op {
     Pop,
 }
 
-
+pub enum Closures {
+    None,
+    Unary(Parsed),
+    Binary(Parsed, Parsed)
+}
 
 impl Op {
 
-    pub fn exec_nullary(&self) -> Parsed {
+    pub fn exec_nullary(&self, c: Closures) -> Parsed {
         match self {
             Op::IORead => {
                 print!("input: ");
@@ -77,7 +81,7 @@ impl Op {
         }
     }
 
-    pub fn exec_unary(&self, arg: Parsed) -> Parsed {
+    pub fn exec_unary(&self, arg: Parsed, c: Closures) -> Parsed {
         match self {
             Op::IOPrint => {
                 println!("output: {}", arg);
@@ -158,12 +162,25 @@ impl Op {
             },
             Op::Exec => {
                 return arg
+            },
+            Op::If => {
+                match c {
+                    Closures::Binary(then_quotation, else_quotation) => {
+                        if arg == Parsed::Bool(true) {
+                            then_quotation
+                        } else {
+                            else_quotation
+                        }
+                    },
+                    _ => panic!("Invalid Closure count sent to if function")
+                }
+
             }
             _ => Parsed::Error(StackError::InvalidBoth)
         }
     }
 
-    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed) -> Parsed {
+    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Closures) -> Parsed {
         match self {
             Op::Add => lhs + rhs,
             Op::Sub => lhs - rhs,
@@ -254,7 +271,9 @@ impl Op {
                 )
             }
             Op::If =>  {
-                unary(Constraint::Boolean, Constraint::Any)
+                let mut sig = unary(Constraint::Boolean, Constraint::Any);
+                sig.modifers = Params::Binary(Constraint::Any, Constraint::Any);
+                sig
             },
             Op::Loop => { // TODO: Very unclear how this one should work
                 nullary(Constraint::Void)
