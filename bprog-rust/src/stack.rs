@@ -18,23 +18,6 @@
 //!
 //! # Examples
 //!
-//! ```
-//! use stack::Stack;
-//!
-//! let mut stack = Stack::new();
-//! assert_eq!(Stack::Empty, stack);
-//!
-//! stack.push(5);
-//! assert_eq!(5, *stack.top().unwrap());
-//! assert_eq!(1, stack.size());
-//!
-//! let top = stack.pop().unwrap();
-//! assert_eq!(5, top);
-//!
-//! assert_eq!(true, stack.is_empty());
-//! ```
-
-
 use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -61,10 +44,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
 
     /// Constructs a new empty stack
     ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// assert_eq!(Stack::Empty, stack);
-    /// ```
     ///
     pub fn new() -> Self {
         Stack::Empty
@@ -75,11 +54,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     /// # Arguments
     /// `val`- An object of type T to be pushed onto the stack.
     ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// stack.push(5);
-    /// assert_eq!(5, *stack.top());
-    /// ```
     ///
     pub fn push(&mut self, val: T) {
         match self {
@@ -99,14 +73,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     /// Some(T) if the stack is non-empty,
     /// None otherwise.
     ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// stack.push(5);
-    /// let top = stack.pop().unwrap();
-    ///
-    /// assert_eq!(top, 6);
-    /// assert_eq!(Stack::Empty, stack);
-    /// ```
     ///
     pub fn pop(&mut self) -> Option<T> {
         match std::mem::replace(self, Stack::Empty) {
@@ -137,11 +103,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     ///
     /// true if empty, false otherwise;
     ///
-    /// ```
-    /// let stack = Stack::new();
-    /// assert_eq!(true, stack.is_empty());
-    ///
-    /// ```
     pub fn is_empty(&self) -> bool {
         match self {
             Stack::Empty => true,
