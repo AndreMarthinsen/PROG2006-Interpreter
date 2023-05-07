@@ -9,7 +9,6 @@ use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::numeric::Numeric::NumError;
 use crate::parsed::Parsed;
-use crate::parsed::Parsed::Quotation;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, TypeClass, unary};
 use crate::types;
@@ -162,15 +161,21 @@ impl Op {
                 Parsed::Quotation(VecDeque::from(vec![arg.clone(), arg.clone()]))
             },
             Op::Exec => {
-                return arg
+                match arg.coerce(&Type::Quotation) {
+                    Parsed::Quotation(q) => {
+                        Parsed::Quotation(q.clone())
+                    },
+                    // TODO: Define
+                    _ => Parsed::Error(StackError::Undefined)
+                }
             },
             Op::If => {
                 match c {
                     Closures::Binary(then_quotation, else_quotation) => {
                         if arg == Parsed::Bool(true) {
-                            then_quotation
+                            then_quotation.coerce(&Type::Quotation)
                         } else {
-                            else_quotation
+                            else_quotation.coerce(&Type::Quotation)
                         }
                     },
                     _ => panic!("Invalid Closure count sent to if function")
@@ -293,7 +298,7 @@ impl Op {
             }
             Op::If =>  {
                 let mut sig = unary(Constraint::Boolean, Constraint::Any);
-                sig.modifers = Params::Binary(Constraint::Quotation, Constraint::Quotation);
+                sig.modifers = Params::Binary(Constraint::Any, Constraint::Any);
                 sig
             },
             Op::Loop => { // TODO: Very unclear how this one should work
@@ -305,7 +310,7 @@ impl Op {
                 sig
             }
             Op::Exec => {
-                unary(Constraint::Quotation, Constraint::Any)
+                unary(Constraint::Executable, Constraint::Any)
             }
             Op::Assign => {
                 heterogeneous_binary(

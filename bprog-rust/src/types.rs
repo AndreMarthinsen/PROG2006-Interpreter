@@ -109,6 +109,7 @@ pub enum Constraint {
     Boolean,
     Enum,
     Display,
+    Executable,
 }
 
 impl Display for Constraint {
@@ -132,6 +133,7 @@ impl Display for Constraint {
             Constraint::Boolean => write!(f, "Boolean"),
             Constraint::Enum => write!(f, "Enum"),
             Constraint::Display => write!(f, "Display"),
+            Constraint::Executable => write!(f, "Executable")
         }
     }
 }
@@ -166,58 +168,13 @@ impl Constraint {
                 Constraint::Display => {
                     t.implements(&TypeClass::Display)
                 },
+                Constraint::Executable => {
+                    t.implements(&TypeClass::Executable)
+                }
                 _ => false,
             }
         }
     }
-
-    /*
-    pub fn is_satisfied_by(&self, t: &Type) -> bool {
-        match self {
-            Constraint::Any => {
-                t.implements(&TypeClass::Any)
-            }
-            Constraint::Ord => {
-                t.implements(&TypeClass::Ordering)
-            }
-            Constraint::Eq => {
-                t.implements(&TypeClass::Eq)
-            }
-            Constraint::Num => {
-                t.implements(&TypeClass::Num)
-            }
-            Constraint::Functor => {
-                t.implements(&TypeClass::Functor)
-            }
-            Constraint::Boolean => {
-                t.implements(&TypeClass::Boolean)
-            }
-            Constraint::Enum => {
-                t.implements(&TypeClass::Enum)
-            },
-            Constraint::Display => {
-                t.implements(&TypeClass::Display)
-            }
-            type_constraint => {
-                match (type_constraint, t) {
-                    (Constraint::Void, Type::Void) => true,
-                    (Constraint::String, Type::String) => true,
-                    (Constraint::List, Type::List) => true,
-                    (Constraint::Integer, Type::Integer) => true,
-                    (Constraint::Float, Type::Float) => true,
-                    (Constraint::Bool, Type::Bool) => true,
-                    (Constraint::Quotation, Type::Quotation) => true,
-                    (Constraint::Error, Type::Error) => true,
-                    (Constraint::Symbol, Type::Symbol) => true,
-                    (Constraint::Function(signature), Type::Function(signature2)) => {
-                        **signature == *signature2
-                    },
-                    (_,_) => false,
-                }
-            }
-        }
-    }
-     */
 }
 
 
@@ -286,7 +243,8 @@ pub(crate) enum TypeClass {
     Functor, // Mapping
     Boolean, // Types with a truth value
     Enum, //
-    Display
+    Display,
+    Executable
 }
 
 
@@ -360,7 +318,8 @@ fn quotation_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Any |
         TypeClass::Boolean |
-        TypeClass::Display => true,
+        TypeClass::Display |
+        TypeClass::Executable => true,
         _ => false,
     }
 }
@@ -382,6 +341,14 @@ fn symbol_implements(class: &TypeClass) -> bool {
     }
 }
 
+fn function_implements(class: &TypeClass) -> bool {
+    match class {
+        TypeClass::Any => true,
+        TypeClass::Executable => true,
+        _ => false
+    }
+}
+
 
 impl Type {
     fn implements(&self, class: &TypeClass) -> bool {
@@ -395,6 +362,7 @@ impl Type {
             Type::Quotation => quotation_implements(class),
             Type::Error => error_implements(class),
             Type::Symbol => symbol_implements(class),
+            Type::Function(_) => function_implements(class),
             _ => false
         }
     }
