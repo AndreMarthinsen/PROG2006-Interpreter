@@ -349,6 +349,33 @@ impl Type {
     }
 }
 
+/// Defines coercion rules for binary operations working
+/// on two potentially different types that can be coerced into
+/// a number type.
+pub fn numeric_coercion(t1: &Type, t2: &Type) -> Option<Type> {
+    if t1 == t2 {
+        return Some(t1.clone());
+    }
+    match (t1, t2) {
+        (Type::Integer, Type::Float) |
+        (Type::Float, Type::Integer) => {
+            Some(Type::Float)
+        },
+        (Type::Bool, Type::Integer) |
+        (Type::Integer, Type::Bool) => {
+            Some(Type::Integer)
+        },
+        (Type::Bool, Type::Float) |
+        (Type::Float, Type::Bool) => {
+            Some(Type::Float)
+        },
+        (_, _) => None
+    }
+}
+
+
+
+
 
 
 
