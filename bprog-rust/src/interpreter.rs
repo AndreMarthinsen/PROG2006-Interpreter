@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
 use num::bigint::Sign;
-use crate::op::Op;
+use crate::op::{Op, Closures};
 use crate::parsed::Parsed;
 use crate::stack::Stack;
+use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, Type};
 use crate::types::Signature;
 
@@ -27,28 +28,36 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
     let signature = op.get_signature();
     match &signature.stack_args {
         Params::Nullary => {
+
             if signature.ret != Constraint::Void {
-                stack.push(op.exec_nullary())
+                stack.push(op.exec_nullary(Closures::None))
             }
         }
         Params::Unary(c) => {
-            let arg = stack.pop().unwrap();
-            if c.is_satisfied_by(&arg.get_type()) {
-                let res = op.exec_unary(arg);
-                //TODO: Error handling
-                if signature.ret.is_satisfied_by(&res.get_type()) {
-                    match res {
-                        Parsed::Quotation(q) => {
-                            run(stack, &mut q.clone())
-                        },
-                        Parsed::Void => {},
-                        _ => stack.push(res)
+            match get_closures(signature.modifers, input) {
+                Ok(closures) => {
+                    let arg = stack.pop().unwrap();
+                    if c.is_satisfied_by(&arg.get_type()) {
+                        let res = op.exec_unary(arg, closures);
+                        //TODO: Error handling
+                        if signature.ret.is_satisfied_by(&res.get_type()) {
+                            match res {
+                                Parsed::Quotation(q) => {
+                                    run(stack, &mut q.clone())
+                                },
+                                Parsed::Void => {},
+                                _ => stack.push(res)
+                            }
+                        } else {
+                            println!("{}", res);
+                        };
+                    } else {
+                        print_mismatch_arg(op, signature.stack_args, Args::Unary(arg.get_type()))
                     }
-                } else {
-                    println!("{}", res);
-                };
-            } else {
-                print_mismatch_arg(op, signature.stack_args, Args::Unary(arg.get_type()))
+                },
+                Err(e) => {
+                    stack.push(Parsed::Error(e));
+                }
             }
         },
         Params::Binary(c1, c2) => {
@@ -58,7 +67,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
             if c1.is_satisfied_by(&lhs.get_type()) &&
                 c2.is_satisfied_by(&rhs.get_type()) {
 
-                let res = op.exec_binary(&lhs, &rhs);
+                let res = op.exec_binary(&lhs, &rhs, Closures::None);
                 if signature.ret.is_satisfied_by(&res.get_type()) {
                     match res {
                         Parsed::Quotation(q) => {
@@ -129,7 +138,46 @@ enum Args {
 }
 
 
+fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closures, StackError> {
+    match expected {
+        Params::Nullary => {
+            Ok(Closures::None)
+        },
+        Params::Unary(constraint) => {
+            if let Some(val) = input.pop_front() {
+                if constraint.is_satisfied_by(&val.get_type()) {
+                    Ok(Closures::Unary(val))
+                } else {
+                    //TODO: Stack error
+                    Err(StackError::Undefined)
+                }
+            } else {
+                //TODO: Stack error
+                Err(StackError::Undefined)
+            }
+        },
+        Params::Binary(c1, c2) => {
+            let mut arg1 = input.pop_front();
+            let mut arg2 = input.pop_front();
+            match (arg1, arg2) {
+                (Some(val), Some(val2)) => {
+                    if c1.is_satisfied_by(&val.get_type()) &&
+                        c2.is_satisfied_by(&val2.get_type()) {
 
+                        Ok(Closures::Binary(val, val2))
+                    } else {
+                        //TODO:: STack Error
+                        Err(StackError::Undefined)
+                    }
+                },
+                //TODO: Stack error
+                _ => Err(StackError::Undefined)
+            }
+        },
+        _ => panic!("closure arguments defined for max 2 quotations")
+
+    }
+}
 
 
 
