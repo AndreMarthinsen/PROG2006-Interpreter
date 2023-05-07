@@ -8,7 +8,7 @@ use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::stack_error::StackError;
 use crate::op::Op;
-use crate::types::Type;
+use crate::types::{numeric_coercion, Type};
 
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////
 
@@ -18,12 +18,12 @@ use crate::types::Type;
 pub enum Parsed {
     Num(Numeric),
     String(String),
-    Boolean(bool),
-    Block(Vec<Parsed>),
+    Bool(bool),
+    Quotation(Vec<Parsed>),
     Symbol(String),
     List(Vec<Parsed>),
     Error(StackError),
-    Operation(Op),
+    Function(Op),
 }
 
 /// Implements Add for StackTokens, with varying behaviour depending on the type.
@@ -106,7 +106,7 @@ impl Parsed {
     fn is_true(&self) -> bool {
         match self {
             Parsed::Num(val) => *val != Numeric::Integer(0),
-            Parsed::Boolean(val) => *val,
+            Parsed::Bool(val) => *val,
             Parsed::String(s) => !s.is_empty(),
             Parsed::List(l) => !l.is_empty(),
             Parsed::Error(_) => false,
@@ -124,23 +124,129 @@ impl Parsed {
                 }
             }
             Parsed::String(_) => Type::String,
-            Parsed::Boolean(_) => Type::Bool,
-            Parsed::Block(_) => Type::Quotation,
+            Parsed::Bool(_) => Type::Bool,
+            Parsed::Quotation(_) => Type::Quotation,
             Parsed::Symbol(_) => Type::Symbol,
             Parsed::List(_) => Type::List,
             Parsed::Error(_) => Type::Error,
-            Parsed::Operation(op) => Type::Function(op.get_signature())
+            Parsed::Function(op) => Type::Function(op.get_signature())
         }
     }
 
     pub fn size (&self) -> Parsed {
         match self {
             Parsed::String(s) => Parsed::Num(Numeric::Integer(s.len() as i128)),
-            Parsed::Block(b) => Parsed::Num(Numeric::Integer(b.len() as i128)),
+            Parsed::Quotation(b) => Parsed::Num(Numeric::Integer(b.len() as i128)),
             Parsed::List(l) => Parsed::Num(Numeric::Integer(l.len() as i128)),
             _ => Parsed::Error(StackError::InvalidLeft)
         }
     }
+
+
+    pub fn coerce(&self, t: &Type) -> Parsed {
+        let res = match t {
+            Type::Void => None,
+            Type::String => self.to_string(),
+            Type::List => self.to_list(),
+            Type::Integer => self.to_integer(),
+            Type::Float => self.to_float(),
+            Type::Bool => self.to_bool(),
+            Type::Quotation => self.to_quotation(),
+            Type::Error => self.to_string(),
+            Type::Symbol => self.to_symbol(),
+            Type::Function(_) => self.to_function(),
+        };
+        if let Some(p) = res {
+            p
+        } else {
+            Parsed::Error(StackError::InvalidCoercion)
+        }
+    }
+
+    fn to_bool(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Num(n) => {
+                Some(Parsed::Bool(n != &Numeric::Integer(0)))
+            }
+            Parsed::Bool(_) => {
+                Some(self.clone())
+            },
+            _ => None
+        }
+    }
+
+    fn to_float(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Bool(b) => {
+                Some(Parsed::Num(Numeric::Float(*b as i32 as  f64)))
+            },
+            Parsed::Num(n) => {
+                Some(Parsed::Num(n.as_float()))
+            },
+            _ => None
+        }
+    }
+
+    fn to_integer(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Bool(b) => {
+                Some(Parsed::Num(Numeric::Integer(*b as i128)))
+            },
+            Parsed::Num(n) => {
+                Some(Parsed::Num(n.as_integer()))
+            },
+            _ => None
+        }
+    }
+
+    fn to_quotation(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Quotation(_) => Some(self.clone()),
+            Parsed::Error(_) => None,
+            _ => Some(Parsed::Quotation(vec![self.clone()])),
+        }
+    }
+
+    fn to_symbol(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Symbol(_) => Some(self.clone()),
+            _ => None,
+        }
+    }
+
+    fn to_error(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Error(_) => Some(self.clone()),
+            _ => None,
+        }
+    }
+
+    fn to_function(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Function(_) => Some(self.clone()),
+            _ => None,
+        }
+    }
+
+    fn to_string(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Error(_) => None,
+            _ => {
+                Some(Parsed::String(format!("{}", self)))
+            }
+        }
+    }
+
+    fn to_list(&self) -> Option<Parsed> {
+        match self {
+            Parsed::Error(_) => None,
+            Parsed::List(_) => Some(self.clone()),
+            _ => {
+                Some(Parsed::List(vec![self.clone()]))
+            }
+        }
+    }
+
 }
 
 
@@ -149,7 +255,7 @@ impl<'a, 'b> BitAnd<&'b Parsed> for &'a Parsed {
     type Output = Parsed;
 
     fn bitand(self, rhs: &'b Parsed) -> Self::Output {
-        Parsed::Boolean(self.is_true() && rhs.is_true())
+        Parsed::Bool(self.is_true() && rhs.is_true())
     }
 }
 
@@ -158,7 +264,7 @@ impl<'a, 'b> BitOr<&'b Parsed> for &'a Parsed {
     type Output = Parsed;
 
     fn bitor(self, rhs: &'b Parsed) -> Self::Output {
-        Parsed::Boolean(self.is_true() || rhs.is_true())
+        Parsed::Bool(self.is_true() || rhs.is_true())
     }
 }
 
@@ -176,9 +282,26 @@ impl PartialEq for Parsed {
             (Parsed::Num(v1), Parsed::Num(v2)) => v1 == v2,
             (Parsed::String(s1), Parsed::String(s2)) => s1.eq(s2),
             (Parsed::List(l1), Parsed::List(l2)) => l1.eq(l2),
-            (Parsed::Boolean(b1), Parsed::Boolean(b2)) => b1 == b2,
+            (Parsed::Bool(b1), Parsed::Bool(b2)) => b1 == b2,
             (Parsed::Error(err1), Parsed::Error(err2)) => err1 == err2,
             (_, _) => false
+        }
+    }
+}
+
+impl PartialOrd for Parsed {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if let Some(t) = numeric_coercion(&self.get_type(), &other.get_type()) {
+            let coerced_l = self.coerce(&t);
+            let coerced_r = other.coerce(&t);
+            match (coerced_l, coerced_r) {
+                (Parsed::Num(n), Parsed::Num(n2)) => {
+                    n.partial_cmp(&n2)
+                },
+                _ => None
+            }
+        } else {
+            None
         }
     }
 }
@@ -191,7 +314,7 @@ impl Display for Parsed {
         match self {
             Parsed::Error(err) => write!(f, "{}", err),
             Parsed::String(s) => write!(f, "\"{}\"", s),
-            Parsed::Boolean(b) => if *b {
+            Parsed::Bool(b) => if *b {
                 write!(f, "True")
             } else {
                 write!(f, "False")
@@ -208,8 +331,8 @@ impl Display for Parsed {
                 }
                 write!(f, "]")
             },
-            Parsed::Operation(op) => write!(f, "{}", op),
-            Parsed::Block(c) => {
+            Parsed::Function(op) => write!(f, "{}", op),
+            Parsed::Quotation(c) => {
                 write!(f, "{{ ")?;
                 let mut iter = c.iter();
                 if let Some(first) = iter.next() {
