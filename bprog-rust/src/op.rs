@@ -211,8 +211,9 @@ impl Op {
             Op::Add => lhs + rhs,
             Op::Sub => lhs - rhs,
             Op::Mul => lhs * rhs,
-            Op::Div => lhs / rhs,
-            Op::IntDiv => lhs / rhs,
+            Op::Div => &lhs.coerce(&Type::Float) / &rhs.coerce(&Type::Float),
+            Op::IntDiv =>
+                (&lhs.coerce(&Type::Integer) / &rhs.coerce(&Type::Integer)).coerce(&Type::Integer),
             Op::GT => Parsed::Bool(lhs > rhs),
             Op::LT => Parsed::Bool(lhs < rhs),
             Op::EQ => Parsed::Bool(lhs == rhs),
@@ -250,7 +251,7 @@ impl Op {
             Op::Add | Op::Sub | Op::Mul | Op::Div =>
                 homogenous_binary(Constraint::Num, Constraint::Num),
             Op::IntDiv =>
-                homogenous_binary(Constraint::Integer, Constraint::Integer),
+                homogenous_binary(Constraint::Num, Constraint::Num),
             Op::LT | Op::GT =>
                 homogenous_binary(Constraint::Ord, Constraint::Bool),
             Op::EQ =>  {
