@@ -80,7 +80,7 @@ impl Op {
         match self {
             Op::IOPrint => {
                 println!("output: {}", arg);
-                Parsed::Function(Op::Void)
+                Parsed::Void
             },
             Op::ListEmpty => {
                 Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
@@ -93,6 +93,9 @@ impl Op {
             },
             Op::Dup => {
                 Parsed::Quotation(VecDeque::from(vec![arg.clone(), arg.clone()]))
+            },
+            Op::Exec => {
+                return arg
             }
             _ => Parsed::Error(StackError::InvalidBoth)
         }
