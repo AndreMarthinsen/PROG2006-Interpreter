@@ -187,7 +187,7 @@ impl Op {
                             Parsed::Num(Numeric::Integer(i)) => {
                                 let mut new_quot = VecDeque::new();
                                 for _ in 0..i {
-                                    new_quot.push_back(quotation.clone());
+                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
                                     new_quot.push_back(Parsed::Function(Op::Exec));
                                 }
                                 Parsed::Quotation(new_quot)
@@ -225,12 +225,11 @@ impl Op {
                 match c {
                     Closures::Unary(quotation) => {
                         let mut new_quot = VecDeque::new();
-                        new_quot.push_back(Parsed::List(Vec::new()));
                         if let Some(list) = arg.get_contents() {
                             list.iter()
                                 .for_each(|p| {
                                     new_quot.push_back(p.clone());
-                                    new_quot.push_back(quotation.clone());
+                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
                                     new_quot.push_back(Parsed::Function(Op::Exec));
                                 })
                         }
@@ -358,7 +357,7 @@ impl Op {
             }
 
             Op::Each => { //TODO: modifying arguments? quotations expected from tree.
-                let mut sig = unary(Constraint::List, Constraint::Void);
+                let mut sig = unary(Constraint::List, Constraint::Any);
                 sig.modifiers = Params::Unary(
                     Constraint::Executable
                 );
@@ -392,12 +391,12 @@ impl Op {
 
             Op::Times => { // TODO: Ditto
                 let mut sig = unary(Constraint::Integer, Constraint::Any);
-                sig.modifiers = Params::Unary(Constraint::Quotation);
+                sig.modifiers = Params::Unary(Constraint::Executable);
                 sig
             }
 
             Op::Exec => {
-                unary(Constraint::Executable, Constraint::Any)
+                unary(Constraint::Executable, Constraint::Executable)
             }
 
             Op::Assign => {

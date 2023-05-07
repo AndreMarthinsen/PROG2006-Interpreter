@@ -47,7 +47,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                                 _ => stack.push(res)
                             }
                         } else {
-                            println!("{}", res);
+                            println!("{} {} {}", res, res.get_type(), signature.ret);
                         };
                     } else {
                         print_mismatch_arg(op, signature.stack_args, Args::Unary(arg.get_type()))
@@ -143,7 +143,8 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closu
         },
         Params::Unary(constraint) => {
             if let Some(val) = input.pop_front() {
-                if constraint.is_satisfied_by(&val.get_type()) {
+                let quot = val.coerce(&Type::Quotation);
+                if constraint.is_satisfied_by(&quot.get_type()) {
                     Ok(Closures::Unary(val))
                 } else {
                     //TODO: Stack error
@@ -159,8 +160,10 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closu
             let arg2 = input.pop_front();
             match (arg1, arg2) {
                 (Some(val), Some(val2)) => {
-                    if c1.is_satisfied_by(&val.get_type()) &&
-                        c2.is_satisfied_by(&val2.get_type()) {
+                    let quot1 = val.coerce(&Type::Quotation);
+                    let quot2 = val.coerce( &Type::Quotation);
+                    if c1.is_satisfied_by(&quot1.get_type()) &&
+                        c2.is_satisfied_by(&quot2.get_type()) {
 
                         Ok(Closures::Binary(val, val2))
                     } else {
