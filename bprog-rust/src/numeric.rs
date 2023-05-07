@@ -36,7 +36,7 @@ impl Numeric {
 
     /// Attempts to return self converted from any enum variant to Numeric::Int.
     /// If the type cannot be converted to Int, it returns itself.
-    fn as_integer(& self) -> Numeric {
+    pub fn as_integer(& self) -> Numeric {
         match self {
             Numeric::Float(val) => Numeric::Integer(*val as i128),
             non_convertible => *non_convertible
@@ -45,7 +45,7 @@ impl Numeric {
 
     /// Attempts to return self converted from any enum variant to Numeric::Float.
     /// If the type cannot be converted to Int, it returns itself.
-    fn as_float(& self) -> Numeric {
+    pub fn as_float(& self) -> Numeric {
         match self {
             Numeric::Integer(val) => Numeric::Float(*val as f64),
             non_convertible => *non_convertible
