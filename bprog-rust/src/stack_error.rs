@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 /// StackError represents various computational errors that can occur during program

@@ -3,15 +3,13 @@
 
 use std::{fmt, io};
 use std::collections::VecDeque;
-use std::fmt::{Binary, Display, Formatter};
-use std::io::{Read, Write};
+use std::fmt::{Display, Formatter};
+use std::io::{Write};
 use std::str::FromStr;
 use crate::numeric::Numeric;
-use crate::numeric::Numeric::NumError;
 use crate::parsed::Parsed;
 use crate::stack_error::StackError;
-use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, TypeClass, unary};
-use crate::types;
+use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, unary};
 
 
 #[derive(Clone)]
@@ -188,7 +186,7 @@ impl Op {
                         match arg {
                             Parsed::Num(Numeric::Integer(i)) => {
                                 let mut new_quot = VecDeque::new();
-                                for n in 0..i {
+                                for _ in 0..i {
                                     new_quot.push_back(quotation.clone());
                                     new_quot.push_back(Parsed::Function(Op::Exec));
                                 }
@@ -220,6 +218,25 @@ impl Op {
                         Parsed::Quotation(new_quot)
                     },
                     _ => panic!("invalid closure count sent to map function")
+
+                }
+            },
+            Op::Each => {
+                match c {
+                    Closures::Unary(quotation) => {
+                        let mut new_quot = VecDeque::new();
+                        new_quot.push_back(Parsed::List(Vec::new()));
+                        if let Some(list) = arg.get_contents() {
+                            list.iter()
+                                .for_each(|p| {
+                                    new_quot.push_back(p.clone());
+                                    new_quot.push_back(quotation.clone());
+                                    new_quot.push_back(Parsed::Function(Op::Exec));
+                                })
+                        }
+                        Parsed::Quotation(new_quot)
+                    },
+                    _ => panic!("invalid closure count sent to each function")
 
                 }
             },
@@ -343,9 +360,7 @@ impl Op {
             Op::Each => { //TODO: modifying arguments? quotations expected from tree.
                 let mut sig = unary(Constraint::List, Constraint::Void);
                 sig.modifiers = Params::Unary(
-                    Constraint::Function(
-                        Box::new(unary(Constraint::Any, Constraint::Void))
-                    )
+                    Constraint::Executable
                 );
                 sig
             },

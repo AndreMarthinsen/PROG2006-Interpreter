@@ -1,11 +1,8 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
-use std::env::Args;
 use std::fmt;
-use num::traits::CheckedAdd;
-use std::fmt::{Debug, Display, Error, Formatter, write};
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
-use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::op::Op;
 use crate::stack_error::StackError;

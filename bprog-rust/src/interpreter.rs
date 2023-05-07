@@ -1,11 +1,9 @@
 use std::collections::VecDeque;
-use num::bigint::Sign;
 use crate::op::{Op, Closures};
 use crate::parsed::Parsed;
 use crate::stack::Stack;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, Type};
-use crate::types::Signature;
 
 pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
     while !input.is_empty() {
@@ -88,9 +86,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                 )
             }
         },
-        Params::Temary(c1, c2, c3) => {
-
-        }
+        _ => {}
     }
 }
 
@@ -136,7 +132,7 @@ fn print_mismatch_arg(op: Op, exp: Params, got: Args) {
 enum Args {
     Unary(Type),
     Binary(Type, Type),
-    Temary(Type, Type, Type)
+    //Temary(Type, Type, Type)
 }
 
 
@@ -159,8 +155,8 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closu
             }
         },
         Params::Binary(c1, c2) => {
-            let mut arg1 = input.pop_front();
-            let mut arg2 = input.pop_front();
+            let arg1 = input.pop_front();
+            let arg2 = input.pop_front();
             match (arg1, arg2) {
                 (Some(val), Some(val2)) => {
                     if c1.is_satisfied_by(&val.get_type()) &&

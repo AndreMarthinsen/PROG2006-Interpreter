@@ -27,7 +27,7 @@ pub fn t(input: &str) -> String {
     // 3. transform the result to a string (tip: implement Display traits)
 
     let mut stack: Stack<Parsed> = Stack::new();
-    let (mut parsed, mut remainder) = parse(to_tokens(&mut input.to_string()));
+    let (parsed, _) = parse(to_tokens(&mut input.to_string()));
     run(&mut stack, &mut VecDeque::from(parsed));
     format!("{}", stack.top().unwrap())
 

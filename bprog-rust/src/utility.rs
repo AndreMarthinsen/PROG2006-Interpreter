@@ -14,7 +14,7 @@ use std::io::{BufReader, Read};
 ///
 pub fn get_tokens(in_file: Option<&mut File>) -> Result<Vec<String>, io::Error> {
     let mut program_text = String::new();
-    let mut read = match in_file {
+    let read = match in_file {
         Some(f) => {
             let mut reader = BufReader::new(f);
             reader.read_to_string(&mut program_text)
@@ -35,7 +35,7 @@ pub fn get_tokens(in_file: Option<&mut File>) -> Result<Vec<String>, io::Error> 
 
 pub fn get_input(in_file: Option<&mut File>) -> Result<String, io::Error> {
     let mut program_text = String::new();
-    let mut read = match in_file {
+    let read = match in_file {
         Some(f) => {
             let mut reader = BufReader::new(f);
             reader.read_to_string(&mut program_text)

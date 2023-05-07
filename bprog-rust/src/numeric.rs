@@ -23,7 +23,7 @@ impl Neg for Numeric {
         match self {
             Numeric::Integer(v) => Numeric::Integer(-v),
             Numeric::Float(v) => Numeric::Float(-v),
-            Numeric::NumError(StackError) => self.clone()
+            Numeric::NumError(_) => self.clone()
         }
     }
 }
@@ -226,7 +226,7 @@ fn binary_numerical(lhs: &Numeric, rhs: &Numeric, op: fn(f64, f64) ->Result<f64,
                 Err(e) => Numeric::NumError(e)
             }
         },
-        (mut left, mut right) => {
+        ( left,right) => {
             match (left.as_float(), right.as_float()) {
                 (Numeric::Float(v1), Numeric::Float(v2)) => {
                     match op(v1, v2) {

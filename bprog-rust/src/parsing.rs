@@ -1,10 +1,5 @@
-use std::cmp::max;
-use std::collections::{HashMap, VecDeque};
-use std::fmt;
-use std::fmt::{Debug, Display, Error, Formatter};
-use std::ops::{Add, Div, Mul, Sub};
+use std::collections::{VecDeque};
 use crate::numeric::Numeric;
-use crate::stack::Stack;
 use crate::parsed::Parsed;
 use crate::op::Op;
 
@@ -43,7 +38,7 @@ pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                 }
                 "{" | "[" => {
                     tokens = tokens[1..].to_vec();
-                    let mut content = vec![];
+                    let mut content = Vec::new();
                     (content, tokens) = parse(tokens.clone());
                     parsed.push(if t == "{" { Parsed::Quotation(VecDeque::from(content.clone())) } else { Parsed::List(content.clone()) });
 
@@ -52,7 +47,7 @@ pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     tokens = tokens[1..].to_vec();
                     let result = get_section(&mut tokens, "\"");
                     match result {
-                        Some((mut section, mut remainder)) => {
+                        Some((section, remainder)) => {
                             tokens = remainder;
                             parsed.push(Parsed::String(section.join(" ")));
                         }
@@ -94,7 +89,7 @@ pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<St
     return match idx {
         Some(pos) => {
             let (section, remainder) = tokens.split_at(pos);
-            let mut ret = section.to_vec();
+            let ret = section.to_vec();
             Some((ret, remainder[1..].to_vec()))
         },
         None => None // TODO: Error

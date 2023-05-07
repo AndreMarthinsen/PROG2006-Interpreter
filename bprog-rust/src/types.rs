@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use crate::op::Op;
 
 
 
@@ -373,7 +372,6 @@ impl Type {
             Type::Error => error_implements(class),
             Type::Symbol => symbol_implements(class),
             Type::Function(_) => function_implements(class),
-            _ => false
         }
     }
 }
