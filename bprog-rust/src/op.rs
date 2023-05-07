@@ -88,6 +88,30 @@ impl Op {
             Op::ListLength =>  {
                 arg.size()
             },
+            Op::ListHead => {
+                match arg {
+                    Parsed::List(v) => {
+                        if let Some(val) = v.get(0){
+                            val.clone()
+                        } else {
+                            Parsed::Error(StackError::InvalidRight)
+                        }
+                    },
+                    _ => panic!("head not supported for {}", arg)
+                }
+            },
+            Op::ListTail => {
+                match arg {
+                    Parsed::List(v) => {
+                        if !v.is_empty() {
+                            Parsed::List(v[1..].to_vec())
+                        } else {
+                            Parsed::Error(StackError::InternalBug)
+                        }
+                    },
+                    _ => panic!("tail not support")
+                }
+            }
             Op::Pop => {
                 Parsed::Void
             },
