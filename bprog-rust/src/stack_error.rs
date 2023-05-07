@@ -15,6 +15,7 @@ Overflow,
     PopEmpty,
     InternalBug,
     InvalidCoercion,
+    Undefined,
 }
 
 /// Implements Display for StackError, writing "err: <specific error message>"
@@ -29,7 +30,8 @@ impl Display for StackError {
             StackError::InvalidBoth => write!(f, "err: operands not defined for function"),
             StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!"),
             StackError::InternalBug => write!(f, "err: something has gone wrong!"),
-            StackError::InvalidCoercion => write!(f, "err: cannot coerce operands to target type")
+            StackError::InvalidCoercion => write!(f, "err: cannot coerce operands to target type"),
+            StackError::Undefined => write!(f, "ERROR MESSAGE PLACEHOLDER")
         }
     }
 }
