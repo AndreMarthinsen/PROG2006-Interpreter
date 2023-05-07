@@ -52,7 +52,12 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
 
                 let res = op.exec_binary(&lhs, &rhs);
                 if signature.ret.is_satisfied_by(&res.get_type()) {
-                    stack.push(res);
+                    match res {
+                        Parsed::Quotation(q) => {
+                            run(stack, &mut q.clone())
+                        },
+                        _ => stack.push(res)
+                    }
                 } else {
                     println!("{}", res);
                 };
