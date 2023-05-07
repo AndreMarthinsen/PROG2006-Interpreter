@@ -261,7 +261,8 @@ fn string_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Any |
         TypeClass::Boolean |
-        TypeClass::Display => true,
+        TypeClass::Display |
+        TypeClass::Eq => true,
         _ => false,
     }
 }

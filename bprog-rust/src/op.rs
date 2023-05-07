@@ -251,8 +251,11 @@ impl Op {
                 homogenous_binary(Constraint::Num, Constraint::Num),
             Op::IntDiv =>
                 homogenous_binary(Constraint::Integer, Constraint::Integer),
-            Op::LT | Op::GT | Op::EQ =>
+            Op::LT | Op::GT =>
                 homogenous_binary(Constraint::Ord, Constraint::Bool),
+            Op::EQ =>  {
+                homogenous_binary(Constraint::Eq, Constraint::Bool)
+            }
             Op::And | Op::Or =>
                 homogenous_binary(Constraint::Boolean, Constraint::Bool),
             Op::Not =>
