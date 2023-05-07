@@ -9,7 +9,7 @@ use crate::op::Op;
 #[derive(Clone)]
 pub struct Signature {
     pub stack_args: Params,
-    pub modifers: Params,
+    pub modifiers: Params,
     pub ret: Constraint,
 }
 
@@ -21,20 +21,20 @@ impl Display for Signature {
 
 impl PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
-        self.modifers == other.modifers &&
+        self.modifiers == other.modifiers &&
             self.stack_args == other.stack_args &&
             self.ret == other.ret
     }
 }
 
 pub fn nullary(ret_type: Constraint) -> Signature {
-    Signature { stack_args: Params::Nullary, modifers: Params::Nullary, ret: ret_type }
+    Signature { stack_args: Params::Nullary, modifiers: Params::Nullary, ret: ret_type }
 }
 
 pub fn homogenous_binary(arg_type: Constraint, ret_type: Constraint) -> Signature {
     Signature {
         stack_args: Params::Binary (arg_type.clone(), arg_type),
-        modifers: Params::Nullary,
+        modifiers: Params::Nullary,
         ret: ret_type,
     }
 }
@@ -42,13 +42,13 @@ pub fn homogenous_binary(arg_type: Constraint, ret_type: Constraint) -> Signatur
 pub fn heterogeneous_binary(lh_arg: Constraint, rh_arg: Constraint, ret_type: Constraint) -> Signature {
     Signature {
         stack_args: Params::Binary (lh_arg, rh_arg),
-        modifers: Params::Nullary,
+        modifiers: Params::Nullary,
         ret: ret_type,
     }
 }
 
 pub fn unary(arg_type: Constraint, ret_type: Constraint) -> Signature {
-    Signature { stack_args: Params::Unary ( arg_type ), modifers: Params::Nullary, ret: ret_type,}
+    Signature { stack_args: Params::Unary ( arg_type ), modifiers: Params::Nullary, ret: ret_type,}
 }
 
 

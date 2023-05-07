@@ -222,7 +222,7 @@ impl Op {
                     _ => panic!("invalid closure count sent to map function")
 
                 }
-            }
+            },
 
             _ => Parsed::Error(StackError::InvalidBoth)
         }
@@ -248,7 +248,26 @@ impl Op {
             Op::Swap => {
                 Parsed::Quotation(VecDeque::from(vec![rhs.clone(), lhs.clone()]))
             },
-            _ => Parsed::Error(StackError::InvalidBoth)
+            Op::Foldl => {
+                match c {
+                    Closures::Unary(quotation) => {
+                        let mut new_quot = VecDeque::new();
+                        new_quot.push_back(rhs.clone());
+                        if let Some(list) = lhs.get_contents() {
+                            list.iter()
+                                .for_each(|p| {
+                                    new_quot.push_back(p.clone());
+                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
+                                    new_quot.push_back(Parsed::Function(Op::Exec));
+                                })
+                        }
+                        println!("{}", Parsed::Quotation(new_quot.clone()));
+                        Parsed::Quotation(new_quot)
+                    },
+                    _ => panic!("invalid closure count sent to map function")
+                }
+            }
+            _ => Parsed::Error(StackError::Undefined)
         }
     }
 
@@ -323,7 +342,7 @@ impl Op {
 
             Op::Each => { //TODO: modifying arguments? quotations expected from tree.
                 let mut sig = unary(Constraint::List, Constraint::Void);
-                sig.modifers = Params::Unary(
+                sig.modifiers = Params::Unary(
                     Constraint::Function(
                         Box::new(unary(Constraint::Any, Constraint::Void))
                     )
@@ -333,21 +352,22 @@ impl Op {
 
             Op::Map => {
                 let mut sig = unary(Constraint::List, Constraint::Quotation);
-                sig.modifers = Params::Unary(Constraint::Quotation);
+                sig.modifiers = Params::Unary(Constraint::Quotation);
                 sig
             },
-
             Op::Foldl => {
-                heterogeneous_binary(
-                    Constraint::Any,
+                let mut sig = heterogeneous_binary(
                     Constraint::List,
-                    Constraint::Any
-                )
+                    Constraint::Any,
+                    Constraint::Executable
+                );
+                sig.modifiers = Params::Unary(Constraint::Executable);
+                sig
             }
 
             Op::If =>  {
                 let mut sig = unary(Constraint::Boolean, Constraint::Any);
-                sig.modifers = Params::Binary(Constraint::Any, Constraint::Any);
+                sig.modifiers = Params::Binary(Constraint::Any, Constraint::Any);
                 sig
             },
 
@@ -357,7 +377,7 @@ impl Op {
 
             Op::Times => { // TODO: Ditto
                 let mut sig = unary(Constraint::Integer, Constraint::Any);
-                sig.modifers = Params::Unary(Constraint::Quotation);
+                sig.modifiers = Params::Unary(Constraint::Quotation);
                 sig
             }
 

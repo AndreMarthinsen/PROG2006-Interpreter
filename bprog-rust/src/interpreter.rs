@@ -34,7 +34,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
             }
         }
         Params::Unary(c) => {
-            match get_closures(signature.modifers, input) {
+            match get_closures(signature.modifiers, input) {
                 Ok(closures) => {
                     let arg = stack.pop().unwrap();
                     if c.is_satisfied_by(&arg.get_type()) {
@@ -66,19 +66,21 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
             // Checks that the constraints of the function signature is satisfied.
             if c1.is_satisfied_by(&lhs.get_type()) &&
                 c2.is_satisfied_by(&rhs.get_type()) {
+                if let Ok(closures) = get_closures(signature.modifiers, input) {
+                    let res = op.exec_binary(&lhs, &rhs, closures);
+                    if signature.ret.is_satisfied_by(&res.get_type()) {
+                        match res {
+                            Parsed::Quotation(q) => {
+                                run(stack, &mut q.clone())
+                            },
+                            Parsed::Void => {},
+                            _ => stack.push(res)
+                        }
+                    } else {
+                        println!("{}", res);
+                    };
+                }
 
-                let res = op.exec_binary(&lhs, &rhs, Closures::None);
-                if signature.ret.is_satisfied_by(&res.get_type()) {
-                    match res {
-                        Parsed::Quotation(q) => {
-                            run(stack, &mut q.clone())
-                        },
-                        Parsed::Void => {},
-                        _ => stack.push(res)
-                    }
-                } else {
-                    println!("{}", res);
-                };
             } else {
                 print_mismatch_arg(op, signature.stack_args, Args::Binary(
                     lhs.get_type(),
