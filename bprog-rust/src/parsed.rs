@@ -7,8 +7,8 @@ use std::fmt::{Debug, Display, Error, Formatter, write};
 use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
 use std::str::FromStr;
 use crate::numeric::Numeric;
-use crate::stack_error::StackError;
 use crate::op::Op;
+use crate::stack_error::StackError;
 use crate::types::{numeric_coercion, Type};
 
 //////////////////// PARSED       //////////////////////////////////////////////////////////////////

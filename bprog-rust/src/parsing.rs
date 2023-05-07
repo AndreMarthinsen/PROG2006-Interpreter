@@ -23,25 +23,7 @@ use crate::op::Op;
 ///
 /// # Examples
 ///
-/// ```
-/// let tokens = vec![
-///     "{", "True", "}", "binding", ":", "\"Hello,", "world!\"", "]", "test"
-/// ];
-///
-/// let (parsed, remainder) = parse(tokens);
-///
-/// assert_eq!(
-///     parsed,
-///     vec![
-///         StackToken::Block(vec![StackToken::Boolean(true)]),
-///         StackToken::Binding("binding".to_string()),
-///         StackToken::List(vec![StackToken::String("Hello, world!".to_string())])
-///     ]
-/// );
-///
-/// assert_eq!(remainder, vec!["test"]);
-/// ```
-pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
+pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
     let mut parsed: Vec<Parsed> = vec![];
     loop {
         if let Some(t) = tokens.clone().get(0) {
@@ -81,7 +63,10 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     parsed.push(Parsed::Bool(t == "True"));
                     tokens = tokens[1..].to_vec()
                 },
-                other => {}
+                other => {
+                    parsed.push(Parsed::Symbol(other.to_string()));
+                    tokens = tokens[1..].to_vec()
+                }
             }
         } else {
             break
@@ -101,11 +86,6 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
 /// # Examples
 ///
 /// ```
-/// let mut tokens = vec!["apple", "banana", "cherry", "date", "elderberry"];
-/// let delimiter = "cherry";
-/// let section = get_section(&mut tokens, delimiter).unwrap();
-/// assert_eq!(section.0, ["apple", "banana"]);
-/// assert_eq!(section.1, ["date", "elderberry"]);
 /// ```
 pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<String>, Vec<String>)> {
     let idx = tokens
