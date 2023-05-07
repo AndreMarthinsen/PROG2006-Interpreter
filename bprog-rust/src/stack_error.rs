@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, write};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 /// StackError represents various computational errors that can occur during program
@@ -13,7 +13,8 @@ Overflow,
     InvalidBoth,
     // Operational errors
     PopEmpty,
-    InternalBug
+    InternalBug,
+    InvalidCoercion,
 }
 
 /// Implements Display for StackError, writing "err: <specific error message>"
@@ -27,7 +28,8 @@ impl Display for StackError {
             StackError::InvalidRight => write!(f, "err: invalid right hand operand"),
             StackError::InvalidBoth => write!(f, "err: operands not defined for function"),
             StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!"),
-            StackError::InternalBug => write!(f, "err: something has gone wrong!")
+            StackError::InternalBug => write!(f, "err: something has gone wrong!"),
+            StackError::InvalidCoercion => write!(f, "err: cannot coerce operands to target type")
         }
     }
 }
