@@ -16,6 +16,7 @@ use crate::types::{numeric_coercion, Type};
 /// enumeration of stack values, allowing a container to hold
 /// arbitrary types.
 pub enum Parsed {
+    Void,
     Num(Numeric),
     String(String),
     Bool(bool),
@@ -116,6 +117,9 @@ impl Parsed {
 
     pub fn get_type(&self) -> Type {
         match self {
+            Parsed::Void => {
+                Type::Void
+            },
             Parsed::Num(numerical) => {
                 match numerical {
                     Numeric::Integer(_) => Type::Integer,
