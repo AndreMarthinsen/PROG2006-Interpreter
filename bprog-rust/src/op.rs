@@ -75,7 +75,7 @@ impl Op {
     pub fn exec_unary(&self, arg: Parsed) -> Parsed {
         match self {
             Op::IOPrint => {
-                println!("{}", arg);
+                println!("output: {}", arg);
                 Parsed::Function(Op::Void)
             },
             Op::ListEmpty => {
@@ -101,7 +101,9 @@ impl Op {
             Op::And => lhs & rhs,
             Op::Or => lhs | rhs,
             Op::ListAppend => lhs + rhs,
-            Op::ListCons => lhs + rhs,
+            Op::ListCons => {
+                &Parsed::List(vec![lhs.clone()]) + rhs
+            },
             _ => Parsed::Error(StackError::InvalidBoth)
         }
     }
@@ -115,7 +117,7 @@ impl Op {
         match self {
             Op::Void => nullary(Constraint::Void),
             Op::IOPrint =>
-                unary(Constraint::String, Constraint::Void),
+                unary(Constraint::Display, Constraint::Void),
             Op::IORead =>
                 nullary(Constraint::String),
             Op::ParseInt =>
