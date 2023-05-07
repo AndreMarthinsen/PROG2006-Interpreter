@@ -48,7 +48,10 @@ pub enum Op {
     Assign,
     AssignFunc,
     AsSymbol,
-    EvalSymbol
+    EvalSymbol,
+    Dup,
+    Swap,
+    Pop,
 }
 
 
@@ -83,6 +86,9 @@ impl Op {
             },
             Op::ListLength =>  {
                 arg.size()
+            },
+            Op::Pop => {
+                Parsed::Void
             }
             _ => Parsed::Error(StackError::InvalidBoth)
         }
@@ -206,6 +212,19 @@ impl Op {
             }
             Op::EvalSymbol => {
                 unary(Constraint::Symbol, Constraint::Any)
+            },
+            Op::Dup => {
+                unary(Constraint::Any, Constraint::Any)
+            },
+            Op::Swap => {
+                heterogeneous_binary(
+                    Constraint::Any,
+                    Constraint::Any,
+                    Constraint::Any
+                )
+            }
+            Op::Pop => {
+                unary(Constraint::Any, Constraint::Void)
             }
         }
     }
@@ -251,6 +270,9 @@ impl Display for Op {
             Op::AssignFunc => write!(f, "fun"),
             Op::AsSymbol => write!(f, "'"),
             Op::EvalSymbol => write!(f, "eval"),
+            Op::Dup => write!(f, "dup"),
+            Op::Swap => write!(f, "swap"),
+            Op::Pop => write!(f, "swap"),
         }
     }
 }
@@ -295,6 +317,9 @@ impl FromStr for Op {
             "fun" => Ok(Op::AssignFunc),
             "'" => Ok(Op::AsSymbol),
             "eval" => Ok(Op::EvalSymbol),
+            "pop" => Ok(Op::Pop),
+            "swap" => Ok(Op::Swap),
+            "dup" => Ok(Op::Dup),
             _ => Err(format!("unknown operation: {}", s)),
         }
     }
