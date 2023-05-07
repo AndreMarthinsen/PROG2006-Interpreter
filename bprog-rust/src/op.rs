@@ -3,12 +3,13 @@
 
 use std::{fmt, io};
 use std::collections::VecDeque;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Binary, Display, Formatter};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::numeric::Numeric::NumError;
 use crate::parsed::Parsed;
+use crate::parsed::Parsed::Quotation;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, TypeClass, unary};
 use crate::types;
@@ -175,7 +176,27 @@ impl Op {
                     _ => panic!("Invalid Closure count sent to if function")
                 }
 
+            },
+            Op::Times => {
+                match c {
+                    Closures::Unary(quotation) => {
+                        match arg {
+                            Parsed::Num(Numeric::Integer(i)) => {
+                                let mut new_quot = VecDeque::new();
+                                for n in 0..i {
+                                    new_quot.push_back(quotation.clone());
+                                    new_quot.push_back(Parsed::Function(Op::Exec));
+                                }
+                                Parsed::Quotation(new_quot)
+                            },
+                            //TODO: Stack error definition
+                            _ => Parsed::Error(StackError::Undefined)
+                        }
+                    },
+                    _ => panic!("Invalid Closure count sent to times function")
+                }
             }
+
             _ => Parsed::Error(StackError::InvalidBoth)
         }
     }
@@ -272,14 +293,16 @@ impl Op {
             }
             Op::If =>  {
                 let mut sig = unary(Constraint::Boolean, Constraint::Any);
-                sig.modifers = Params::Binary(Constraint::Any, Constraint::Any);
+                sig.modifers = Params::Binary(Constraint::Quotation, Constraint::Quotation);
                 sig
             },
             Op::Loop => { // TODO: Very unclear how this one should work
                 nullary(Constraint::Void)
             },
             Op::Times => { // TODO: Ditto
-                unary(Constraint::Integer, Constraint::Any)
+                let mut sig = unary(Constraint::Integer, Constraint::Any);
+                sig.modifers = Params::Unary(Constraint::Quotation);
+                sig
             }
             Op::Exec => {
                 unary(Constraint::Quotation, Constraint::Any)
