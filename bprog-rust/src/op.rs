@@ -2,6 +2,7 @@
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 use std::{fmt, io};
+use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 use std::io::{Read, Write};
 use std::str::FromStr;
@@ -110,6 +111,10 @@ impl Op {
             Op::ListCons => {
                 &Parsed::List(vec![lhs.clone()]) + rhs
             },
+            Op::Swap => {
+
+                Parsed::Quotation(VecDeque::from(vec![rhs.clone(), lhs.clone()]))
+            }
             _ => Parsed::Error(StackError::InvalidBoth)
         }
     }
