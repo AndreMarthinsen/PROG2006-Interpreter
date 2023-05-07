@@ -244,12 +244,6 @@ impl Parsed {
         }
     }
 
-    fn to_error(&self) -> Option<Parsed> {
-        match self {
-            Parsed::Error(_) => Some(self.clone()),
-            _ => None,
-        }
-    }
 
     fn to_function(&self) -> Option<Parsed> {
         match self {
