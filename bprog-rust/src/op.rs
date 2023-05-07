@@ -7,6 +7,7 @@ use std::fmt::{Display, Formatter};
 use std::io::{Read, Write};
 use std::str::FromStr;
 use crate::numeric::Numeric;
+use crate::numeric::Numeric::NumError;
 use crate::parsed::Parsed;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, TypeClass, unary};
@@ -82,6 +83,18 @@ impl Op {
                 println!("output: {}", arg);
                 Parsed::Void
             },
+            Op::ParseInt => {
+                match arg {
+                    Parsed::String(s) =>  {
+                        return if let Ok(i) = s.parse::<i128>() {
+                            Parsed::Num(Numeric::Integer(i))
+                        } else {
+                            Parsed::Error(StackError::Overflow)
+                        }
+                    },
+                    _ => panic!("bug: argument type not implemented for parseInt")
+                }
+            }
             Op::ListEmpty => {
                 Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
             },
