@@ -268,7 +268,7 @@ impl Op {
                 unary(Constraint::List, Constraint::Bool)
             },
             Op::ListLength => {
-                unary(Constraint::List, Constraint::Integer)
+                unary(Constraint::Sized, Constraint::Integer)
             },
             Op::ListCons => {
                 heterogeneous_binary(

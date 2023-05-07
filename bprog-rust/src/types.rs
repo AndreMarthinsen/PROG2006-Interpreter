@@ -110,6 +110,7 @@ pub enum Constraint {
     Enum,
     Display,
     Executable,
+    Sized
 }
 
 impl Display for Constraint {
@@ -133,7 +134,8 @@ impl Display for Constraint {
             Constraint::Boolean => write!(f, "Boolean"),
             Constraint::Enum => write!(f, "Enum"),
             Constraint::Display => write!(f, "Display"),
-            Constraint::Executable => write!(f, "Executable")
+            Constraint::Executable => write!(f, "Executable"),
+            Constraint::Sized => write!(f, "Sized"),
         }
     }
 }
@@ -170,6 +172,9 @@ impl Constraint {
                 },
                 Constraint::Executable => {
                     t.implements(&TypeClass::Executable)
+                },
+                Constraint::Sized => {
+                    t.implements(&TypeClass::Sized)
                 }
                 _ => false,
             }
@@ -244,7 +249,8 @@ pub(crate) enum TypeClass {
     Boolean, // Types with a truth value
     Enum, //
     Display,
-    Executable
+    Executable,
+    Sized
 }
 
 
@@ -262,7 +268,8 @@ fn string_implements(class: &TypeClass) -> bool {
         TypeClass::Any |
         TypeClass::Boolean |
         TypeClass::Display |
-        TypeClass::Eq => true,
+        TypeClass::Eq |
+        TypeClass::Sized => true,
         _ => false,
     }
 }
@@ -273,7 +280,8 @@ fn list_implements(class: &TypeClass) -> bool {
         TypeClass::Eq |
         TypeClass::Functor |
         TypeClass::Boolean |
-        TypeClass::Display => true,
+        TypeClass::Display |
+        TypeClass::Sized => true,
         _ => false,
     }
 }
@@ -320,7 +328,8 @@ fn quotation_implements(class: &TypeClass) -> bool {
         TypeClass::Any |
         TypeClass::Boolean |
         TypeClass::Display |
-        TypeClass::Executable => true,
+        TypeClass::Executable |
+        TypeClass::Sized => true,
         _ => false,
     }
 }
