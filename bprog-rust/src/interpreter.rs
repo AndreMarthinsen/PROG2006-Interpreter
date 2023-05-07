@@ -36,9 +36,17 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
             if c.is_satisfied_by(&arg.get_type()) {
                 let res = op.exec_unary(arg);
                 //TODO: Error handling
-                if signature.ret != Constraint::Void {
-                    stack.push(res)
-                }
+                if signature.ret.is_satisfied_by(&res.get_type()) {
+                    match res {
+                        Parsed::Quotation(q) => {
+                            run(stack, &mut q.clone())
+                        },
+                        Parsed::Void => {},
+                        _ => stack.push(res)
+                    }
+                } else {
+                    println!("{}", res);
+                };
             } else {
                 print_mismatch_arg(op, signature.stack_args, Args::Unary(arg.get_type()))
             }
@@ -56,6 +64,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                         Parsed::Quotation(q) => {
                             run(stack, &mut q.clone())
                         },
+                        Parsed::Void => {},
                         _ => stack.push(res)
                     }
                 } else {
