@@ -200,6 +200,28 @@ impl Op {
                     },
                     _ => panic!("Invalid Closure count sent to times function")
                 }
+            },
+            Op::Map => {
+                match c {
+                    Closures::Unary(quotation) => {
+                        let mut new_quot = VecDeque::new();
+                        new_quot.push_back(Parsed::List(Vec::new()));
+                        if let Some(list) = arg.get_contents() {
+                            list.iter()
+                                .for_each(|p| {
+                                    new_quot.push_back(p.clone());
+                                    new_quot.push_back(quotation.clone());
+                                    new_quot.push_back(Parsed::Function(Op::Exec));
+                                    new_quot.push_back(Parsed::List(Vec::new()));
+                                    new_quot.push_back(Parsed::Function(Op::ListCons));
+                                    new_quot.push_back(Parsed::Function(Op::ListAppend))
+                                })
+                        }
+                        Parsed::Quotation(new_quot)
+                    },
+                    _ => panic!("invalid closure count sent to map function")
+
+                }
             }
 
             _ => Parsed::Error(StackError::InvalidBoth)
@@ -238,39 +260,55 @@ impl Op {
     pub fn get_signature(&self) -> Signature {
         match self {
             Op::Void => nullary(Constraint::Void),
+
             Op::IOPrint =>
                 unary(Constraint::Display, Constraint::Void),
+
             Op::IORead =>
                 nullary(Constraint::String),
+
             Op::ParseInt =>
                 unary(Constraint::String, Constraint::Integer),
+
             Op::ParseFloat =>
                 unary(Constraint::String, Constraint::Float),
+
             Op::ParseWords =>
                 unary(Constraint::String, Constraint::List),
+
             Op::Add | Op::Sub | Op::Mul | Op::Div =>
                 homogenous_binary(Constraint::Num, Constraint::Num),
+
             Op::IntDiv =>
                 homogenous_binary(Constraint::Num, Constraint::Num),
+
             Op::LT | Op::GT =>
                 homogenous_binary(Constraint::Ord, Constraint::Bool),
+
             Op::EQ =>  {
                 homogenous_binary(Constraint::Eq, Constraint::Bool)
             }
+
             Op::And | Op::Or =>
                 homogenous_binary(Constraint::Boolean, Constraint::Bool),
+
             Op::Not =>
                 unary(Constraint::Num, Constraint::Num),
+
             Op::ListHead =>
                 unary(Constraint::List, Constraint::Any),
+
             Op::ListTail =>
                 unary(Constraint::List, Constraint::List),
+
             Op::ListEmpty => {
                 unary(Constraint::List, Constraint::Bool)
             },
+
             Op::ListLength => {
                 unary(Constraint::Sized, Constraint::Integer)
             },
+
             Op::ListCons => {
                 heterogeneous_binary(
                     Constraint::Any,
@@ -278,9 +316,11 @@ impl Op {
                     Constraint::List
                 )
             },
+
             Op::ListAppend => {
                 homogenous_binary(Constraint::List, Constraint::List)
             }
+
             Op::Each => { //TODO: modifying arguments? quotations expected from tree.
                 let mut sig = unary(Constraint::List, Constraint::Void);
                 sig.modifers = Params::Unary(
@@ -290,9 +330,13 @@ impl Op {
                 );
                 sig
             },
+
             Op::Map => {
-                unary(Constraint::List, Constraint::List)
+                let mut sig = unary(Constraint::List, Constraint::Quotation);
+                sig.modifers = Params::Unary(Constraint::Quotation);
+                sig
             },
+
             Op::Foldl => {
                 heterogeneous_binary(
                     Constraint::Any,
@@ -300,22 +344,27 @@ impl Op {
                     Constraint::Any
                 )
             }
+
             Op::If =>  {
                 let mut sig = unary(Constraint::Boolean, Constraint::Any);
                 sig.modifers = Params::Binary(Constraint::Any, Constraint::Any);
                 sig
             },
+
             Op::Loop => { // TODO: Very unclear how this one should work
                 nullary(Constraint::Void)
             },
+
             Op::Times => { // TODO: Ditto
                 let mut sig = unary(Constraint::Integer, Constraint::Any);
                 sig.modifers = Params::Unary(Constraint::Quotation);
                 sig
             }
+
             Op::Exec => {
                 unary(Constraint::Executable, Constraint::Any)
             }
+
             Op::Assign => {
                 heterogeneous_binary(
                     Constraint::Symbol,
@@ -323,6 +372,7 @@ impl Op {
                     Constraint::Void
                 )
             },
+
             Op::AssignFunc => {
                 heterogeneous_binary(
                     Constraint::Symbol,
@@ -330,15 +380,19 @@ impl Op {
                     Constraint::Void
                 )
             }
+
             Op::AsSymbol => {
                 nullary(Constraint::Symbol)
             }
+
             Op::EvalSymbol => {
                 unary(Constraint::Symbol, Constraint::Any)
             },
+
             Op::Dup => {
                 unary(Constraint::Any, Constraint::Any)
             },
+
             Op::Swap => {
                 heterogeneous_binary(
                     Constraint::Any,
@@ -346,6 +400,7 @@ impl Op {
                     Constraint::Any
                 )
             }
+
             Op::Pop => {
                 unary(Constraint::Any, Constraint::Void)
             }

@@ -160,6 +160,16 @@ impl Parsed {
     }
 
 
+    pub fn get_contents(&self) -> Option<Vec<Parsed>>{
+        match self {
+            Parsed::List(l) => {
+                Some(l.clone())
+            },
+            _ => None
+        }
+    }
+
+
     pub fn coerce(&self, t: &Type) -> Parsed {
         let res = match t {
             Type::Void => None,
