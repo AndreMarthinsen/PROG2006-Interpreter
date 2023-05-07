@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
@@ -20,7 +21,7 @@ pub enum Parsed {
     Num(Numeric),
     String(String),
     Bool(bool),
-    Quotation(Vec<Parsed>),
+    Quotation(VecDeque<Parsed>),
     Symbol(String),
     List(Vec<Parsed>),
     Error(StackError),
@@ -207,7 +208,13 @@ impl Parsed {
         match self {
             Parsed::Quotation(_) => Some(self.clone()),
             Parsed::Error(_) => None,
-            _ => Some(Parsed::Quotation(vec![self.clone()])),
+            _ => {
+                let mut deque = VecDeque::new();
+                deque.push_back(self.clone());
+                Some(Parsed::Quotation(deque))
+            }
+
+             //   Some(Parsed::Quotation(vec![self.clone()])),
         }
     }
 

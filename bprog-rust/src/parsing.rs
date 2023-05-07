@@ -1,5 +1,5 @@
 use std::cmp::max;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::fmt::{Debug, Display, Error, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
@@ -63,7 +63,7 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     tokens = tokens[1..].to_vec();
                     let mut content = vec![];
                     (content, tokens) = parse(tokens.clone());
-                    parsed.push(if t == "{" { Parsed::Quotation(content.clone()) } else { Parsed::List(content.clone()) });
+                    parsed.push(if t == "{" { Parsed::Quotation(VecDeque::from(content.clone())) } else { Parsed::List(content.clone()) });
 
                 },
                 "\"" => {
