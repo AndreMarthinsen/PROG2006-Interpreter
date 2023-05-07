@@ -54,7 +54,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                 if signature.ret.is_satisfied_by(&res.get_type()) {
                     stack.push(res);
                 } else {
-                    println!("Shit the bed! {}", res);
+                    println!("{}", res);
                 };
             } else {
                 print_mismatch_arg(op, signature.stack_args, Args::Binary(
