@@ -108,6 +108,7 @@ pub enum Constraint {
     Functor,
     Boolean,
     Enum,
+    Display,
 }
 
 impl Display for Constraint {
@@ -130,11 +131,47 @@ impl Display for Constraint {
             Constraint::Functor => write!(f, "Functor"),
             Constraint::Boolean => write!(f, "Boolean"),
             Constraint::Enum => write!(f, "Enum"),
+            Constraint::Display => write!(f, "Display"),
         }
     }
 }
 
 impl Constraint {
+    pub fn is_satisfied_by(&self, t: &Type) -> bool {
+        if self == &t.as_constraint() {
+            return true
+        } else {
+            match self {
+                Constraint::Any => {
+                    t.implements(&TypeClass::Any)
+                }
+                Constraint::Ord => {
+                    t.implements(&TypeClass::Ordering)
+                }
+                Constraint::Eq => {
+                    t.implements(&TypeClass::Eq)
+                }
+                Constraint::Num => {
+                    t.implements(&TypeClass::Num)
+                }
+                Constraint::Functor => {
+                    t.implements(&TypeClass::Functor)
+                }
+                Constraint::Boolean => {
+                    t.implements(&TypeClass::Boolean)
+                }
+                Constraint::Enum => {
+                    t.implements(&TypeClass::Enum)
+                },
+                Constraint::Display => {
+                    t.implements(&TypeClass::Display)
+                },
+                _ => false,
+            }
+        }
+    }
+
+    /*
     pub fn is_satisfied_by(&self, t: &Type) -> bool {
         match self {
             Constraint::Any => {
@@ -157,6 +194,9 @@ impl Constraint {
             }
             Constraint::Enum => {
                 t.implements(&TypeClass::Enum)
+            },
+            Constraint::Display => {
+                t.implements(&TypeClass::Display)
             }
             type_constraint => {
                 match (type_constraint, t) {
@@ -177,6 +217,7 @@ impl Constraint {
             }
         }
     }
+     */
 }
 
 
@@ -245,13 +286,15 @@ pub(crate) enum TypeClass {
     Functor, // Mapping
     Boolean, // Types with a truth value
     Enum, //
+    Display
 }
 
 
 fn void_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Eq |
-        TypeClass::Any => true,
+        TypeClass::Any |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -259,7 +302,8 @@ fn void_implements(class: &TypeClass) -> bool {
 fn string_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Any |
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -269,7 +313,8 @@ fn list_implements(class: &TypeClass) -> bool {
         TypeClass::Any |
         TypeClass::Eq |
         TypeClass::Functor |
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -280,7 +325,8 @@ fn integer_implements(class: &TypeClass) -> bool {
         TypeClass::Ordering |
         TypeClass::Eq |
         TypeClass::Num |
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -291,7 +337,8 @@ fn float_implements(class: &TypeClass) -> bool {
         TypeClass::Ordering |
         TypeClass::Eq |
         TypeClass::Num |
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -303,7 +350,8 @@ fn bool_implements(class: &TypeClass) -> bool {
         TypeClass::Eq |
         TypeClass::Num |
         TypeClass::Boolean |
-        TypeClass::Enum => true,
+        TypeClass::Enum |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -311,7 +359,8 @@ fn bool_implements(class: &TypeClass) -> bool {
 fn quotation_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Any |
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false,
     }
 }
@@ -319,14 +368,16 @@ fn quotation_implements(class: &TypeClass) -> bool {
 fn error_implements(class: &TypeClass) -> bool {
     match class {
         TypeClass::Any => true,
-        TypeClass::Boolean => true,
+        TypeClass::Boolean |
+        TypeClass::Display => true,
         _ => false
     }
 }
 
 fn symbol_implements(class: &TypeClass) -> bool {
     match class {
-        TypeClass::Any => true,
+        TypeClass::Any |
+        TypeClass::Display => true,
         _ => false
     }
 }
