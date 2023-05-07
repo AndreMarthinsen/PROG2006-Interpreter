@@ -92,7 +92,7 @@ impl Op {
                             Parsed::Error(StackError::Overflow)
                         }
                     },
-                    _ => panic!("bug: argument type not implemented for parseInt")
+                    _ => panic!("bug: argument type not implemented for parseInteger")
                 }
             },
             Op::ParseFloat => {
@@ -104,7 +104,17 @@ impl Op {
                             Parsed::Error(StackError::Overflow)
                         }
                     },
-                    _ => panic!("bug: argument type not implemented for parseInt")
+                    _ => panic!("bug: argument type not implemented for parseFloat")
+                }
+            },
+            Op::ParseWords => {
+                match arg {
+                    Parsed::String(s) => {
+                        Parsed::List(
+                            s.split_whitespace().map(|s| Parsed::String(s.to_string())).collect::<Vec<Parsed>>()
+                        )
+                    },
+                    _ => panic!("bug: argument type not implemented for words")
                 }
             }
             Op::ListEmpty => {
@@ -303,7 +313,7 @@ impl Display for Op {
             Op::IORead => write!(f, "read"),
             Op::ParseInt => write!(f, "parseInteger"),
             Op::ParseFloat => write!(f, "parseFloat"),
-            Op::ParseWords => write!(f, "parseWords"),
+            Op::ParseWords => write!(f, "words"),
             Op::Add => write!(f, "+"),
             Op::Sub => write!(f, "-"),
             Op::Mul => write!(f, "*"),
@@ -350,7 +360,7 @@ impl FromStr for Op {
             "read" => Ok(Op::IORead),
             "parseInteger" => Ok(Op::ParseInt),
             "parseFloat" => Ok(Op::ParseFloat),
-            "parseWords" => Ok(Op::ParseWords),
+            "words" => Ok(Op::ParseWords),
             "+" => Ok(Op::Add),
             "-" => Ok(Op::Sub),
             "*" => Ok(Op::Mul),
