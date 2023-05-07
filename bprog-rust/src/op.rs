@@ -90,6 +90,9 @@ impl Op {
             },
             Op::Pop => {
                 Parsed::Void
+            },
+            Op::Dup => {
+                Parsed::Quotation(VecDeque::from(vec![arg.clone(), arg.clone()]))
             }
             _ => Parsed::Error(StackError::InvalidBoth)
         }
@@ -112,9 +115,8 @@ impl Op {
                 &Parsed::List(vec![lhs.clone()]) + rhs
             },
             Op::Swap => {
-
                 Parsed::Quotation(VecDeque::from(vec![rhs.clone(), lhs.clone()]))
-            }
+            },
             _ => Parsed::Error(StackError::InvalidBoth)
         }
     }
