@@ -10,7 +10,7 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
     while !input.is_empty() {
         if let Some(p) = input.pop_front() {
             match p {
-                Parsed::Operation(op) => {
+                Parsed::Function(op) => {
                     exec_op(op, stack, input )
                 },
                 other => {

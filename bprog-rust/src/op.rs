@@ -76,10 +76,10 @@ impl Op {
         match self {
             Op::IOPrint => {
                 println!("{}", arg);
-                Parsed::Operation(Op::Void)
+                Parsed::Function(Op::Void)
             },
             Op::ListEmpty => {
-                Parsed::Boolean(arg.size() == Parsed::Num(Numeric::Integer(0)))
+                Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
             },
             Op::ListLength =>  {
                 arg.size()
@@ -95,7 +95,9 @@ impl Op {
             Op::Mul => lhs * rhs,
             Op::Div => lhs / rhs,
             Op::IntDiv => lhs / rhs,
-            Op::EQ => Parsed::Boolean(lhs == rhs),
+            Op::GT => Parsed::Bool(lhs > rhs),
+            Op::LT => Parsed::Bool(lhs < rhs),
+            Op::EQ => Parsed::Bool(lhs == rhs),
             Op::And => lhs & rhs,
             Op::Or => lhs | rhs,
             Op::ListAppend => lhs + rhs,

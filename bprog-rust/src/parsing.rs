@@ -63,7 +63,7 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     tokens = tokens[1..].to_vec();
                     let mut content = vec![];
                     (content, tokens) = parse(tokens.clone());
-                    parsed.push(if t == "{" { Parsed::Block(content.clone()) } else { Parsed::List(content.clone()) });
+                    parsed.push(if t == "{" { Parsed::Quotation(content.clone()) } else { Parsed::List(content.clone()) });
 
                 },
                 "\"" => {
@@ -78,7 +78,7 @@ pub(crate) fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     }
                 },
                 "True" | "False" => {
-                    parsed.push(Parsed::Boolean(t == "True"));
+                    parsed.push(Parsed::Bool(t == "True"));
                     tokens = tokens[1..].to_vec()
                 },
                 other => {}
@@ -128,10 +128,10 @@ pub fn parse_primitives(token: & str) -> Option<Parsed> {
         return Some(Parsed::Num(val));
     }
     if token == "True" {
-        return Some(Parsed::Boolean(true))
+        return Some(Parsed::Bool(true))
     }
     if token == "False" {
-        return Some(Parsed::Boolean(false))
+        return Some(Parsed::Bool(false))
     }
     if let Ok(val) = token.parse::<f64>() {
         return Some(Parsed::Num(Numeric::Float(val)));
@@ -142,7 +142,7 @@ pub fn parse_primitives(token: & str) -> Option<Parsed> {
 
 pub fn parse_operations(token: & str) -> Option<Parsed> {
     if let Ok(op) = token.parse::<Op>() {
-        return Some(Parsed::Operation(op))
+        return Some(Parsed::Function(op))
     }
     None
 }
