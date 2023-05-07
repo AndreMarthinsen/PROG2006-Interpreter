@@ -4,7 +4,7 @@ use std::env::Args;
 use std::fmt;
 use num::traits::CheckedAdd;
 use std::fmt::{Debug, Display, Error, Formatter, write};
-use std::ops::{Add, BitAnd, BitOr, Div, Mul, Sub};
+use std::ops::{Add, BitAnd, BitOr, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::op::Op;
@@ -26,6 +26,18 @@ pub enum Parsed {
     List(Vec<Parsed>),
     Error(StackError),
     Function(Op),
+}
+
+impl Neg for Parsed {
+    type Output = Parsed;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Parsed::Num(num) => Parsed::Num(-num),
+            Parsed::Bool(b) => Parsed::Bool(!b),
+            _ => Parsed::Error(StackError::InvalidRight)
+        }
+    }
 }
 
 /// Implements Add for StackTokens, with varying behaviour depending on the type.

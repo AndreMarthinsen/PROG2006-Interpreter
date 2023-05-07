@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 use crate::stack_error::StackError;
 
@@ -14,6 +14,18 @@ pub enum Numeric {
     Integer(i128),
     Float(f64),
     NumError(StackError)
+}
+
+impl Neg for Numeric {
+    type Output = Numeric;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Numeric::Integer(v) => Numeric::Integer(-v),
+            Numeric::Float(v) => Numeric::Float(-v),
+            Numeric::NumError(StackError) => self.clone()
+        }
+    }
 }
 
 // Numeric methods
