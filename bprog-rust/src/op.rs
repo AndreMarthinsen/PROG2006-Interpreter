@@ -94,6 +94,18 @@ impl Op {
                     },
                     _ => panic!("bug: argument type not implemented for parseInt")
                 }
+            },
+            Op::ParseFloat => {
+                match arg {
+                    Parsed::String(s) =>  {
+                        return if let Ok(f) = s.parse::<f64>() {
+                            Parsed::Num(Numeric::Float(f))
+                        } else {
+                            Parsed::Error(StackError::Overflow)
+                        }
+                    },
+                    _ => panic!("bug: argument type not implemented for parseInt")
+                }
             }
             Op::ListEmpty => {
                 Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
