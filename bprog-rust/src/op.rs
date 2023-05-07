@@ -111,6 +111,9 @@ impl Op {
                     },
                     _ => panic!("tail not support")
                 }
+            },
+            Op::Not => {
+                -arg
             }
             Op::Pop => {
                 Parsed::Void
