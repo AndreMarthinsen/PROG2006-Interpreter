@@ -50,7 +50,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                             println!("{} {} {}", res, res.get_type(), signature.ret);
                         };
                     } else {
-                        print_mismatch_arg(op, signature.stack_args, Args::Unary(arg.get_type()))
+                        print_mismatch_arg(op, signature.stack_args, Args::Unary(arg))
                     }
                 },
                 Err(e) => {
@@ -81,8 +81,8 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
 
             } else {
                 print_mismatch_arg(op, signature.stack_args, Args::Binary(
-                    lhs.get_type(),
-                    rhs.get_type())
+                    lhs,
+                    rhs)
                 )
             }
         },
@@ -93,24 +93,24 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
 fn print_mismatch_arg(op: Op, exp: Params, got: Args) {
     match (exp, got) {
         (Params::Unary(expected), Args::Unary(actual)) => {
-            println!("err: argument of type \x1b[33m{}\x1b[0m does not satisfy constraint in \
-            the function \x1b[36m{}\x1b[0m, with signature (\x1b[31m{}\x1b[0m -> {}).", actual, op, expected, op.get_signature().ret)
+            println!("err: argument of type \x1b[33m{}\x1b[0m with value \x1b[33m{}\x1b[0m does not satisfy constraint in \
+            the function \x1b[36m{}\x1b[0m, with signature (\x1b[31m{}\x1b[0m -> {}).", actual.get_type(), actual, op, expected, op.get_signature().ret)
         },
         (Params::Binary(exp1, exp2), Args::Binary(act1, act2)) => {
             println!("bug: {} {}", act1, act2);
-            let lhs = !exp1.is_satisfied_by(&act1);
-            let rhs = !exp2.is_satisfied_by(&act2);
+            let lhs = !exp1.is_satisfied_by(&act1.get_type());
+            let rhs = !exp2.is_satisfied_by(&act2.get_type());
             let mut do_grammar = "does";
             print!("err: ");
             if lhs {
-                print!("first argument of type \x1b[33m{}\x1b[0m ", act1);
+                print!("first argument of type \x1b[33m{}\x1b[0m with value of \x1b[33m{}\x1b[0m ", act1.get_type(), act1);
             }
             if lhs && rhs {
                 do_grammar = "do";
                 print!("and ")
             }
             if rhs {
-                print!("second argument of type \x1b[33m{}\x1b[0m ", act2);
+                print!("second argument of type \x1b[33m{}\x1b[0m with value \x1b[33m{}\x1b[0m ", act2.get_type(), act2);
             }
             print!("{} not match constraints in the function \x1b[36m{}\x1b[0m, with signature (", do_grammar, op);
             if lhs {
@@ -130,8 +130,8 @@ fn print_mismatch_arg(op: Op, exp: Params, got: Args) {
 }
 
 enum Args {
-    Unary(Type),
-    Binary(Type, Type),
+    Unary(Parsed),
+    Binary(Parsed, Parsed),
     //Temary(Type, Type, Type)
 }
 
