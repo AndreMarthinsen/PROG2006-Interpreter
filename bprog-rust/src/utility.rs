@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Read};
@@ -49,17 +50,26 @@ pub fn get_input(in_file: Option<&mut File>) -> Result<String, io::Error> {
 /// # Examples
 ///
 /// ```
-/// use bprog::utility::to_tokens;
-/// let tokens: Vec<String> = vec!["one", "two", "three"]
-///     .into_iter().map(String::from).collect();
+/// use std::collections::VecDeque;
+/// use bprog::utility::{string_vec_deque, to_tokens};
+/// let tokens = string_vec_deque(&["one", "two", "three"]);
 ///
 /// assert_eq!(tokens, to_tokens("one two three"));
 ///
 /// ```
 ///
-pub fn to_tokens(input: &str) -> Vec<String> {
+pub fn to_tokens(input: &str) -> VecDeque<String> {
     input
         .split_whitespace()
         .map(|s| s.to_string())
-        .collect::<Vec<_>>()
+        .collect::<VecDeque<_>>()
+}
+
+
+pub fn string_vec(vec: &[&str]) -> Vec<String> {
+    vec.iter().map(|s| s.to_string()).collect()
+}
+
+pub fn string_vec_deque(vec: &[&str]) -> VecDeque<String> {
+    VecDeque::from(string_vec(vec))
 }
