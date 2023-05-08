@@ -2,16 +2,14 @@
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 use std::{fmt, io};
-use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
 use std::io::{Write};
 use std::str::FromStr;
 use crate::interpreter::Binding;
 use crate::numeric::Numeric;
-use crate::op::Op::Cons;
 use crate::parsed::Parsed;
-use crate::parsing::{parse, parse_to_quotation};
+use crate::parsing::{ parse_to_quotation};
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, unary};
 
@@ -66,17 +64,39 @@ pub enum Modifiers {
 
 impl Op {
 
-    pub fn exec_nullary(&self, mods: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
+    pub fn exec_nullary(&self, mods: Modifiers, _bindings: &mut HashMap<String, Binding>) -> Parsed {
         match self {
             Op::IORead => Self::exec_ioread(),
             Op::Void => Self::exec_void(),
-            Op::AsSymbol => Self::exec_as_symbol(mods, bindings),
+            Op::AsSymbol => Self::exec_as_symbol(mods),
+            Op::Loop => Self::exec_loop(mods),
             _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
 
-    fn exec_as_symbol(c: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
+    fn exec_loop(c: Modifiers) -> Parsed {
+        match c {
+            Modifiers::Binary( mut quot1, mut quot2) => {
+                quot1 = quot1.coerce(&Type::Quotation);
+                quot2 = quot2.coerce(&Type::Quotation);
+                let ret = format!(
+                    " {:?} exec not if {{ {:?} exec loop {:?} {:?} }} {{ }} ",
+                    quot1,  quot2, quot1, quot2);
+                return parse_to_quotation(ret)
+            }
+            _ => panic!("invalid closure count sent to each function"),
+        }
+    }
+
+    fn exec_as_symbol(c: Modifiers ) -> Parsed {
         if let Modifiers::Unary(Parsed::Symbol(s)) = c {
+            return Parsed::Symbol(s.clone());
+        }
+        panic!("bug: function ' (eval as symbol) fed non symbol as modifier. Check constraints.")
+    }
+
+    fn exec_eval(arg: Parsed, bindings: &mut HashMap<String, Binding>) -> Parsed {
+        if let Parsed::Symbol(s) = arg {
             return if let Some(binding) = bindings.get(s.as_str()) {
                 binding.value.clone()
             } else {
@@ -87,7 +107,7 @@ impl Op {
     }
 
 
-    pub fn exec_unary(&self, arg: Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_unary(&self, arg: Parsed, c: Modifiers, bindings: &mut  HashMap<String, Binding>) -> Parsed {
         match self {
             Op::IOPrint => Self::exec_print(arg),
             Op::ParseInt => Self::exec_parse_int(arg),
@@ -105,6 +125,7 @@ impl Op {
             Op::Times => Self::exec_times(arg, c),
             Op::Map => Self::exec_map(arg, c),
             Op::Each => Self::exec_each(arg, c),
+            Op::EvalSymbol => Self::exec_eval(arg, bindings),
             _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
@@ -132,7 +153,7 @@ impl Op {
     }
 
 
-    fn exec_assign(lhs: &Parsed, rhs: &Parsed, c: Modifiers, bindings: &mut HashMap<String, Binding>, func: bool) -> Parsed {
+    fn exec_assign(lhs: &Parsed, rhs: &Parsed, _c: Modifiers, bindings: &mut HashMap<String, Binding>, func: bool) -> Parsed {
         if func && !Constraint::Executable.is_satisfied_by(&rhs.get_type()) {
             panic!("bug: non executable value attempted bound to function. Check constraint system.")
         }
@@ -590,7 +611,7 @@ impl Op {
 
     fn get_map_sig() -> Signature {
         let mut sig = unary(Constraint::List, Constraint::Quotation);
-        sig.modifiers = Params::Unary(Constraint::Quotation);
+        sig.modifiers = Params::Unary(Constraint::Executable);
         sig
     }
 
@@ -613,7 +634,9 @@ impl Op {
     }
 
     pub fn get_loop_sig() -> Signature {
-        nullary(Constraint::Void)
+        let mut sig = nullary(Constraint::Any);
+        sig.modifiers = Params::Binary(Constraint::Executable, Constraint::Executable);
+        sig
     }
 
     pub fn get_times_sig() -> Signature {
