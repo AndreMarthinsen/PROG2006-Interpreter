@@ -7,7 +7,7 @@ use bprog::interpreter::{Binding, run};
 use bprog::parsed::Parsed;
 use bprog::parsing::parse;
 use bprog::stack::Stack;
-use bprog::utility::get_tokens;
+use bprog::utility::{get_input, to_tokens};
 
 
 fn main() {
@@ -17,15 +17,16 @@ fn main() {
     loop {
         print!("bprog > ");
         io::stdout().flush().expect("TODO: panic message");
-        match get_tokens(None) {
-            Ok( tokens) => {
-                let (stack_tokens, _two) = parse(tokens);
+        match get_input(None) {
+            Ok(mut tokens) => {
+                let stack_tokens = parse(&mut VecDeque::from(to_tokens(&mut tokens)));
                 let mut run_tokens = VecDeque::from(stack_tokens);
                 run(&mut stack, &mut run_tokens, &mut dictionary );
                 //match stack_tokens {
                 //    None => {println!("something went to shits");}
                 //    Some(ts) => println!("{:?}", &ts)
                 //}
+                print!("stack > ");
                 stack.display_all_contents();
             }
             _ => {}
