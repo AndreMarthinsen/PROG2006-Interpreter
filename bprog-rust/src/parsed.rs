@@ -308,6 +308,9 @@ impl PartialEq for Parsed {
             (Parsed::List(l1), Parsed::List(l2)) => l1.eq(l2),
             (Parsed::Bool(b1), Parsed::Bool(b2)) => b1 == b2,
             (Parsed::Error(err1), Parsed::Error(err2)) => err1 == err2,
+            (Parsed::Quotation(q), Parsed::Quotation(q2)) => {
+                q.eq(q2)
+            }
             (_, _) => false
         }
     }
@@ -376,7 +379,33 @@ impl Display for Parsed {
 /// Wraps Display for simplicity
 impl Debug for Parsed {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        match self {
+            Parsed::String(s) => write!(f, "\" {} \"", s),
+            Parsed::List(list) => {
+                write!(f, "[ ")?;
+                let mut iter = list.iter();
+                if let Some(first) = iter.next() {
+                    write!(f, "{:?}", first)?;
+                    for item in iter {
+                        write!(f, " {:?}", item)?;
+                    }
+                }
+                write!(f, " ]")
+            },
+            Parsed::Quotation(c) => {
+                write!(f, "{{ ")?;
+                let mut iter = c.iter();
+                if let Some(first) = iter.next() {
+                    write!(f, "{:?}", first)?;
+                    for item in iter {
+                        write!(f, " {:?}", item)?;
+                    }
+                }
+                write!(f, " }}")
+            },
+
+            other => write!(f, "{}", other) //TODO: Error here?
+        }
     }
 }
 
