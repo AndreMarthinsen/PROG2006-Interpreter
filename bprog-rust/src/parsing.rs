@@ -2,6 +2,7 @@ use std::collections::{VecDeque};
 use crate::numeric::Numeric;
 use crate::parsed::Parsed;
 use crate::op::Op;
+use crate::utility::to_tokens;
 
 
 /// Parses a vector of string tokens into a list of stack tokens and a remainder.
@@ -122,82 +123,11 @@ pub fn parse_operations(token: & str) -> Option<Parsed> {
     None
 }
 
-
-/*
-pub fn operations_map() -> HashMap<String, Op> {
-    let mut binding_list = vec!(
-        ("+", Op::Arithmetic(binary_numerical(false, add))),
-        ("-", Op::Arithmetic(binary_numerical(false, sub))),
-        ("/", Op::Arithmetic(binary_numerical(false, div))),
-        ("*", Op::Arithmetic(binary_numerical(false, mul))),
-        ("div", Op::Arithmetic(binary_numerical(true, div))),
-    );
-    let res: Vec<(String, Op)> = binding_list.into_iter().map(|s| (s.0.to_string(), s.1)).collect();
-    return HashMap::from_iter(res)
+/// Function for use with tests.
+pub fn parse_to_quotation(string: String) -> Parsed {
+    let (parsed, _) = parse(to_tokens(&mut string.to_string()));
+    Parsed::Quotation(VecDeque::from(parsed))
 }
-*/
-/*
-fn binary_numerical(strict_type: bool, op: fn(a: f64, b: f64) -> f64) -> Box<dyn Fn(&mut Stack<StackToken>) -> ()> {
-    return Box::new(move |stack: &mut Stack<StackToken>| {
-        let mut rhs = StackToken::Empty;
-        let mut lhs = StackToken::Empty;
-        if let Some(token) = stack.pop() {
-            rhs = token;
-        }
-        if let Some(token) = stack.pop() {
-            lhs = token;
-        }
-        if rhs == StackToken::Empty || lhs == StackToken::Empty {
-            stack.push(StackToken::Err("".to_string()));
-            return
-        }
-        // If strict_type is on, implicit type conversion is off.
-        if strict_type && ( lhs != rhs ) {
-            stack.push(StackToken::Err("".to_string()));
-            return
-        }
-
-        match (lhs, rhs){
-            (StackToken::Integer(l), StackToken::Integer(r)) => {
-                stack.push(StackToken::Integer(op(l as f64, r as f64) as i32))
-            },
-            (StackToken::Float(l), StackToken::Integer(r)) => {
-                stack.push(StackToken::Float(op(l, r as f64)))
-            },
-            (StackToken::Integer(l), StackToken::Float(r)) => {
-                stack.push(StackToken::Float(op(l as f64, r)))
-            },
-            (StackToken::Float(l), StackToken::Float(r)) => {
-                stack.push(StackToken::Float(op(l, r)))
-            },
-            (_, _) => {
-                stack.push(StackToken::Err("".to_string())) // TODO: error handling
-            }
-        }
-    })
-}
-
-fn add(a: f64, b: f64) -> f64 {
-    return a + b
-}
-
-fn sub(a: f64, b: f64) -> f64{
-    return a - b
-}
-
-fn mul(a: f64, b: f64) -> f64{
-    return a * b
-}
-
-fn div(a: f64, b: f64) -> f64 {
-    return a / b
-}
-
-
-*/
-
-
-
 
 
 
