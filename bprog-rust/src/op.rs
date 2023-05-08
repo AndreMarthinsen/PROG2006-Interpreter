@@ -2,11 +2,14 @@
 /////////////////////////// OP ////////////////////////////////////////////////////////////////////
 
 use std::{fmt, io};
-use std::collections::VecDeque;
+use std::any::Any;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
 use std::io::{Write};
 use std::str::FromStr;
+use crate::interpreter::Binding;
 use crate::numeric::Numeric;
+use crate::op::Op::Cons;
 use crate::parsed::Parsed;
 use crate::parsing::{parse, parse_to_quotation};
 use crate::stack_error::StackError;
@@ -63,13 +66,26 @@ pub enum Modifiers {
 
 impl Op {
 
-    pub fn exec_nullary(&self, c: Modifiers) -> Parsed {
+    pub fn exec_nullary(&self, mods: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
         match self {
             Op::IORead => Self::exec_ioread(),
             Op::Void => Self::exec_void(),
+            Op::AsSymbol => Self::exec_as_symbol(mods, bindings),
             _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
+
+    fn exec_as_symbol(c: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
+        if let Modifiers::Unary(Parsed::Symbol(s)) = c {
+            return if let Some(binding) = bindings.get(s.as_str()) {
+                binding.value.clone()
+            } else {
+                Parsed::Symbol(s.clone())
+            }
+        }
+        panic!("bug: function ' (eval as symbol) fed non symbol as modifier. Check constraints.")
+    }
+
 
     pub fn exec_unary(&self, arg: Parsed, c: Modifiers) -> Parsed {
         match self {
@@ -93,7 +109,7 @@ impl Op {
         }
     }
 
-    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
         match self {
             Op::Add => Self::exec_add(lhs, rhs),
             Op::Sub => Self::exec_sub(lhs, rhs),
@@ -109,10 +125,36 @@ impl Op {
             Op::Cons => Self::exec_cons(lhs, rhs),
             Op::Swap => Self::exec_swap(lhs, rhs),
             Op::Foldl => Self::exec_foldl(lhs, rhs, c),
-            _ => panic!("bug:  use of wrong exec_* function for function {}", self)
+            Op::Assign => Self::exec_assign(lhs, rhs, c, bindings, false),
+            Op::AssignFunc => Self::exec_assign(lhs, rhs, c, bindings, true),
+            _ => panic!("bug:  use of wrong exec_* function for function {}, or function not implemented.", self)
         }
     }
 
+
+    fn exec_assign(lhs: &Parsed, rhs: &Parsed, c: Modifiers, bindings: &mut HashMap<String, Binding>, func: bool) -> Parsed {
+        if func && !Constraint::Executable.is_satisfied_by(&rhs.get_type()) {
+            panic!("bug: non executable value attempted bound to function. Check constraint system.")
+        }
+        match lhs {
+            Parsed::Symbol(s) => {
+                if let Some (val) = bindings.get(s.as_str()) {
+                    if val.constant {
+                        return Parsed::Error(StackError::Undefined);
+                    }
+                }
+                let binding = Binding{
+                    function: func,
+                    constant: false,
+                    value: rhs.clone(),
+                };
+                bindings.insert(s.clone(), binding);
+                Parsed::Void
+
+            },
+            _ => panic!("bug: exec_assign given non-symbol for bind operation"),
+        }
+    }
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,7 +373,7 @@ impl Op {
 
     pub fn exec_times(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(mut quotation) => match arg {
+            Modifiers::Unary(quotation) => match arg {
                 Parsed::Num(Numeric::Integer(i)) => {
                     let quotation = quotation.coerce(&Type::Quotation);
                     return parse_to_quotation(
@@ -401,7 +443,7 @@ impl Op {
 
     pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(mut quotation) => {
+            Modifiers::Unary(quotation) => {
                 let quotation = quotation.coerce(&Type::Quotation);
                 return parse_to_quotation(
                     format!(
@@ -576,7 +618,7 @@ impl Op {
 
     pub fn get_times_sig() -> Signature {
         let mut sig = unary(Constraint::Integer, Constraint::Any);
-        sig.modifiers = Params::Unary(Constraint::Executable);
+        sig.modifiers = Params::Unary(Constraint::Any);
         sig
     }
 
@@ -595,15 +637,17 @@ impl Op {
     }
 
     pub fn get_assign_func_sig() -> Signature {
-        heterogeneous_binary(
+        heterogeneous_binary (
             Constraint::Symbol,
-            Constraint::Quotation,
+            Constraint::Executable,
             Constraint::Void
         )
     }
 
     pub fn get_as_symbol_sig() -> Signature {
-        nullary(Constraint::Symbol)
+        let mut sig = nullary(Constraint::Symbol);
+        sig.modifiers = Params::Unary(Constraint::Symbol);
+        sig
     }
 
     pub fn get_eval_symbol_sig() -> Signature {

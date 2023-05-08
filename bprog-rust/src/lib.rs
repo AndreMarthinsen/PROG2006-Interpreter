@@ -1,9 +1,9 @@
-use crate::interpreter::run;
+use crate::interpreter::{Binding, run};
 use crate::parsed::Parsed;
 use crate::parsing::parse;
 use crate::stack::Stack;
 use crate::utility::to_tokens;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 // integration testing
 pub mod stack;
@@ -27,8 +27,9 @@ pub fn t(input: &str) -> String {
     // 3. transform the result to a string (tip: implement Display traits)
 
     let mut stack: Stack<Parsed> = Stack::new();
+    let mut dictionary: HashMap<String, Binding> = HashMap::new();
     let (parsed, _) = parse(to_tokens(&mut input.to_string()));
-    run(&mut stack, &mut VecDeque::from(parsed));
+    run(&mut stack, &mut VecDeque::from(parsed), &mut dictionary);
     format!("{}", stack.top().unwrap())
 
 }

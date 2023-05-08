@@ -162,6 +162,9 @@ impl Parsed {
             Parsed::List(l) => {
                 Some(l.clone())
             },
+            Parsed::Quotation(q) => {
+                Some(Vec::from(q.clone()))
+            }
             _ => None
         }
     }

@@ -1,16 +1,51 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use crate::op::{Op, Modifiers};
 use crate::parsed::Parsed;
 use crate::stack::Stack;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, Type};
 
-pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
+pub struct Binding {
+    pub function: bool,
+    pub constant: bool,
+    pub value: Parsed
+}
+
+pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
     while !input.is_empty() {
         if let Some(p) = input.pop_front() {
-            match p {
+            match p.clone() {
+                Parsed::Error(e) => {
+                    println!("runtime error: {}", e);
+                    stack.push(p);
+                    break;
+                }
+                Parsed::Symbol(s) => {
+                    if let Some (val) = bindings.get(&s) {
+                        if val.function {
+                            run(stack, &mut VecDeque::from(val.value.get_contents().unwrap()), bindings)
+                        } else {
+                            stack.push(val.value.clone())
+                        }
+                    } else {
+                        stack.push(p.clone())
+                    }
+                },
+                Parsed::List(s) => {
+                    stack.push(Parsed::List(s.iter().map(|p|
+                        match p {
+                        Parsed::Symbol(s) => {
+                            if let Some (val) = bindings.get(s.as_str()) {
+                                val.value.clone()
+                            } else {
+                                p.clone()
+                            }
+                        },
+                        _ => p.clone()
+                    }).collect()));
+                }
                 Parsed::Function(op) => {
-                    exec_op(op, stack, input )
+                    exec_op(op, stack, input, bindings )
                 },
                 other => {
                     stack.push(other)
@@ -22,13 +57,21 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
 
 
 
-fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
+fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
     let signature = op.get_signature();
     match &signature.stack_args {
         Params::Nullary => {
-
-            if signature.ret != Constraint::Void {
-                stack.push(op.exec_nullary(Modifiers::None))
+            match get_closures(signature.modifiers, input) {
+                Ok (closures) => {
+                    let ret = op.exec_nullary(closures, bindings);
+                    if signature.ret.is_satisfied_by(&ret.get_type()) &&
+                        signature.ret != Constraint::Void {
+                        stack.push(ret)
+                    }
+                },
+                Err(e) => {
+                    stack.push(Parsed::Error(e));
+                }
             }
         }
         Params::Unary(c) => {
@@ -41,7 +84,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
                         if signature.ret.is_satisfied_by(&res.get_type()) {
                             match res {
                                 Parsed::Quotation(q) => {
-                                    run(stack, &mut q.clone())
+                                    run(stack, &mut q.clone(), bindings)
                                 },
                                 Parsed::Void => {},
                                 _ => stack.push(res)
@@ -65,11 +108,11 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
             if c1.is_satisfied_by(&lhs.get_type()) &&
                 c2.is_satisfied_by(&rhs.get_type()) {
                 if let Ok(closures) = get_closures(signature.modifiers, input) {
-                    let res = op.exec_binary(&lhs, &rhs, closures);
+                    let res = op.exec_binary(&lhs, &rhs, closures, bindings);
                     if signature.ret.is_satisfied_by(&res.get_type()) {
                         match res {
                             Parsed::Quotation(q) => {
-                                run(stack, &mut q.clone())
+                                run(stack, &mut q.clone(), bindings)
                             },
                             Parsed::Void => {},
                             _ => stack.push(res)
@@ -143,8 +186,7 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Modif
         },
         Params::Unary(constraint) => {
             if let Some(val) = input.pop_front() {
-                let quot = val.coerce(&Type::Quotation);
-                if constraint.is_satisfied_by(&quot.get_type()) {
+                if constraint.is_satisfied_by(&val.get_type()) {
                     Ok(Modifiers::Unary(val))
                 } else {
                     //TODO: Stack error
@@ -160,11 +202,8 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Modif
             let arg2 = input.pop_front();
             match (arg1, arg2) {
                 (Some(val), Some(val2)) => {
-                    let quot1 = val.coerce(&Type::Quotation);
-                    let quot2 = val.coerce( &Type::Quotation);
-                    if c1.is_satisfied_by(&quot1.get_type()) &&
-                        c2.is_satisfied_by(&quot2.get_type()) {
-
+                    if c1.is_satisfied_by(&val.get_type()) &&
+                        c2.is_satisfied_by(&val2.get_type()) {
                         Ok(Modifiers::Binary(val, val2))
                     } else {
                         //TODO:: STack Error

@@ -41,7 +41,11 @@ pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
                     tokens = tokens[1..].to_vec();
                     let mut content = Vec::new();
                     (content, tokens) = parse(tokens.clone());
-                    parsed.push(if t == "{" { Parsed::Quotation(VecDeque::from(content.clone())) } else { Parsed::List(content.clone()) });
+                    parsed.push(if t == "{" {
+                        Parsed::Quotation(VecDeque::from(content.clone())) }
+                    else {
+                        Parsed::List(content.clone())
+                    });
 
                 },
                 "\"" => {
