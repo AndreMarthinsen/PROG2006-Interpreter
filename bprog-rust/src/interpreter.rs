@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use crate::op::{Op, Closures};
+use crate::op::{Op, Modifiers};
 use crate::parsed::Parsed;
 use crate::stack::Stack;
 use crate::stack_error::StackError;
@@ -28,7 +28,7 @@ fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>) {
         Params::Nullary => {
 
             if signature.ret != Constraint::Void {
-                stack.push(op.exec_nullary(Closures::None))
+                stack.push(op.exec_nullary(Modifiers::None))
             }
         }
         Params::Unary(c) => {
@@ -136,16 +136,16 @@ enum Args {
 }
 
 
-fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closures, StackError> {
+fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Modifiers, StackError> {
     match expected {
         Params::Nullary => {
-            Ok(Closures::None)
+            Ok(Modifiers::None)
         },
         Params::Unary(constraint) => {
             if let Some(val) = input.pop_front() {
                 let quot = val.coerce(&Type::Quotation);
                 if constraint.is_satisfied_by(&quot.get_type()) {
-                    Ok(Closures::Unary(val))
+                    Ok(Modifiers::Unary(val))
                 } else {
                     //TODO: Stack error
                     Err(StackError::Undefined)
@@ -165,7 +165,7 @@ fn get_closures (expected: Params, input: &mut VecDeque<Parsed>) -> Result<Closu
                     if c1.is_satisfied_by(&quot1.get_type()) &&
                         c2.is_satisfied_by(&quot2.get_type()) {
 
-                        Ok(Closures::Binary(val, val2))
+                        Ok(Modifiers::Binary(val, val2))
                     } else {
                         //TODO:: STack Error
                         Err(StackError::Undefined)

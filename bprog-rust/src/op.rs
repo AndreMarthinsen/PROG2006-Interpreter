@@ -54,7 +54,7 @@ pub enum Op {
     Pop,
 }
 
-pub enum Closures {
+pub enum Modifiers {
     None,
     Unary(Parsed),
     Binary(Parsed, Parsed)
@@ -62,7 +62,7 @@ pub enum Closures {
 
 impl Op {
 
-    pub fn exec_nullary(&self, c: Closures) -> Parsed {
+    pub fn exec_nullary(&self, c: Modifiers) -> Parsed {
         match self {
             Op::IORead => Self::exec_ioread(),
             Op::Void => Self::exec_void(),
@@ -70,7 +70,7 @@ impl Op {
         }
     }
 
-    pub fn exec_unary(&self, arg: Parsed, c: Closures) -> Parsed {
+    pub fn exec_unary(&self, arg: Parsed, c: Modifiers) -> Parsed {
         match self {
             Op::IOPrint => Self::exec_print(arg),
             Op::ParseInt => Self::exec_parse_int(arg),
@@ -92,7 +92,7 @@ impl Op {
         }
     }
 
-    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Closures) -> Parsed {
+    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
         match self {
             Op::Add => Self::exec_add(lhs, rhs),
             Op::Sub => Self::exec_sub(lhs, rhs),
@@ -315,9 +315,9 @@ impl Op {
         }
     }
 
-    pub fn exec_if(arg: Parsed, c: Closures) -> Parsed {
+    pub fn exec_if(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Closures::Binary(then_quotation, else_quotation) => {
+            Modifiers::Binary(then_quotation, else_quotation) => {
                 if arg == Parsed::Bool(true) {
                     then_quotation.coerce(&Type::Quotation)
                 } else {
@@ -328,9 +328,9 @@ impl Op {
         }
     }
 
-    pub fn exec_times(arg: Parsed, c: Closures) -> Parsed {
+    pub fn exec_times(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Closures::Unary(quotation) => match arg {
+            Modifiers::Unary(quotation) => match arg {
                 Parsed::Num(Numeric::Integer(i)) => {
                     let mut new_quot = VecDeque::new();
                     for _ in 0..i {
@@ -350,9 +350,9 @@ impl Op {
 
     //// HIGHER ORDER FUNCTION DEFINITIONS ////
 
-    pub fn exec_map(arg: Parsed, c: Closures) -> Parsed {
+    pub fn exec_map(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Closures::Unary(quotation) => {
+            Modifiers::Unary(quotation) => {
                 let mut new_quot = VecDeque::new();
                 new_quot.push_back(Parsed::List(Vec::new()));
                 if let Some(list) = arg.get_contents() {
@@ -371,9 +371,9 @@ impl Op {
         }
     }
 
-    pub fn exec_each(arg: Parsed, c: Closures) -> Parsed {
+    pub fn exec_each(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Closures::Unary(quotation) => {
+            Modifiers::Unary(quotation) => {
                 let mut new_quot = VecDeque::new();
                 if let Some(list) = arg.get_contents() {
                     list.iter().for_each(|p| {
@@ -393,9 +393,9 @@ impl Op {
 
 
 
-    pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Closures) -> Parsed {
+    pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
         match c {
-            Closures::Unary(quotation) => {
+            Modifiers::Unary(quotation) => {
                 let mut new_quot = VecDeque::new();
                 new_quot.push_back(rhs.clone());
                 if let Some(list) = lhs.get_contents() {
