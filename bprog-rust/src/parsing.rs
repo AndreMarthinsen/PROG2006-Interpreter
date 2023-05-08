@@ -19,60 +19,47 @@ use crate::utility::to_tokens;
 ///
 /// # Examples
 ///
-pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
+///
+pub fn parse(tokens: &mut VecDeque<String>) -> Vec<Parsed> {
     let mut parsed: Vec<Parsed> = vec![];
-    loop {
-        if let Some(t) = tokens.clone().get(0) {
-            if let Some(p) = parse_primitives(t) {
-                parsed.push(p);
-                tokens = tokens[1..].to_vec();
-                continue;
-            }
-            if let Some(p) = parse_operations(t) {
-                parsed.push(p);
-                tokens = tokens[1..].to_vec();
-                continue;
-            }
-            match t.as_str() {
-                "}" | "]" =>  {
-                    return (parsed.clone(), tokens[1..].to_vec())
-                }
-                "{" | "[" => {
-                    tokens = tokens[1..].to_vec();
-                    let mut content = Vec::new();
-                    (content, tokens) = parse(tokens.clone());
-                    parsed.push(if t == "{" {
-                        Parsed::Quotation(VecDeque::from(content.clone())) }
-                    else {
-                        Parsed::List(content.clone())
-                    });
 
-                },
-                "\"" => {
-                    tokens = tokens[1..].to_vec();
-                    let result = get_section(&mut tokens, "\"");
-                    match result {
-                        Some((section, remainder)) => {
-                            tokens = remainder;
-                            parsed.push(Parsed::String(section.join(" ")));
-                        }
-                        None => {println!("didnt work");}
+    while let Some(t) = tokens.pop_front() {
+        if let Some(p) = parse_primitives(t.as_str()) {
+            parsed.push(p);
+            continue;
+        };
+        if let Some(p) = parse_operations(t.as_str()) {
+            parsed.push(p);
+            continue;
+        };
+        match t.as_str() {
+            "}" | "]" =>  {
+                return parsed;
+            },
+            "{" | "[" => {
+                let content: Vec<Parsed>;
+                content = parse(tokens);
+                parsed.push(if t == "{" {
+                    Parsed::Quotation(VecDeque::from(content.clone())) }
+                else {
+                    Parsed::List(content.clone())
+                });
+            },
+            "\"" => {
+                let result = get_section(tokens, "\"");
+                match result {
+                    Some(section) => {
+                        parsed.push(Parsed::String(section.join(" ")));
                     }
-                },
-                "True" | "False" => {
-                    parsed.push(Parsed::Bool(t == "True"));
-                    tokens = tokens[1..].to_vec()
-                },
-                other => {
-                    parsed.push(Parsed::Symbol(other.to_string()));
-                    tokens = tokens[1..].to_vec()
-                }
+                    None => {println!("didnt work");}
+                };
+            },
+            other => {
+                parsed.push(Parsed::Symbol(other.to_string()));
             }
-        } else {
-            break
-        }
-    }
-    return (parsed, tokens.clone())
+        };
+    }{};
+    return parsed;
 }
 
 /// Extracts a section of a vector of strings delimited by a specified string.
@@ -87,18 +74,16 @@ pub fn parse(mut tokens: Vec<String>) -> (Vec<Parsed>, Vec<String>) {
 ///
 /// ```
 /// ```
-pub fn get_section (tokens: &mut Vec<String>, delimiter: &str) -> Option<(Vec<String>, Vec<String>)> {
-    let idx = tokens
-        .iter()
-        .position(|t| t.eq(delimiter));
-    return match idx {
-        Some(pos) => {
-            let (section, remainder) = tokens.split_at(pos);
-            let ret = section.to_vec();
-            Some((ret, remainder[1..].to_vec()))
-        },
-        None => None // TODO: Error
-    }
+pub fn get_section (tokens: &mut VecDeque<String>, delimiter: &str) -> Option<Vec<String>> {
+    let mut section = Vec::new();
+    while let Some(t) = tokens.pop_front() {
+        if t.eq(delimiter) {
+            return Some(section)
+        } else {
+            section.push(t.clone())
+        }
+    }{}
+    None
 }
 
 
@@ -129,7 +114,7 @@ pub fn parse_operations(token: & str) -> Option<Parsed> {
 
 /// Function for use with tests.
 pub fn parse_to_quotation(string: String) -> Parsed {
-    let (parsed, _) = parse(to_tokens(&mut string.to_string()));
+    let parsed = parse(&mut VecDeque::from(to_tokens(&mut string.to_string())));
     Parsed::Quotation(VecDeque::from(parsed))
 }
 
