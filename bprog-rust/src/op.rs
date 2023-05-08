@@ -8,7 +8,7 @@ use std::io::{Write};
 use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::parsed::Parsed;
-use crate::parsing::parse_to_quotation;
+use crate::parsing::{parse, parse_to_quotation};
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, unary};
 
@@ -331,14 +331,14 @@ impl Op {
 
     pub fn exec_times(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => match arg {
+            Modifiers::Unary(mut quotation) => match arg {
                 Parsed::Num(Numeric::Integer(i)) => {
-                    let mut new_quot = VecDeque::new();
-                    for _ in 0..i {
-                        new_quot.push_back(quotation.coerce(&Type::Quotation));
-                        new_quot.push_back(Parsed::Function(Op::Exec));
-                    }
-                    Parsed::Quotation(new_quot)
+                    let quotation = quotation.coerce(&Type::Quotation);
+                    return parse_to_quotation(if i == 0 {
+                            " ".to_string()
+                        } else {
+                            format!("{:?} exec {} times {:?}", quotation,  i-1, quotation)
+                        });
                 }
                 //TODO: Stack error definition
                 _ => Parsed::Error(StackError::Undefined),
@@ -377,9 +377,9 @@ impl Op {
                     return parse_to_quotation( if list.len() == 0 {
                         "[ ]".to_string()
                     } else if list.len() == 1 {
-                        format!(" {:?} head {} exec [ ] cons", arg, quotation)
+                        format!(" {:?} head {:?} exec [ ] cons", arg, quotation)
                     } else {
-                        format!(" {:?} head {} exec {:?} tail map {} cons ", arg, quotation, arg, quotation)
+                        format!(" {:?} head {:?} exec {:?} tail map {:?} cons ", arg, quotation, arg, quotation)
                     });
                 }
                 arg
@@ -390,16 +390,18 @@ impl Op {
 
     pub fn exec_each(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => {
-                let mut new_quot = VecDeque::new();
+            Modifiers::Unary( mut quotation) => {
+                quotation = quotation.coerce(&Type::Quotation);
                 if let Some(list) = arg.get_contents() {
-                    list.iter().for_each(|p| {
-                        new_quot.push_back(p.clone());
-                        new_quot.push_back(quotation.coerce(&Type::Quotation));
-                        new_quot.push_back(Parsed::Function(Op::Exec));
-                    })
+                    return parse_to_quotation( if list.len() == 0 {
+                        " ".to_string()
+                    } else if list.len() == 1 {
+                        format!(" {:?} head {:?} exec", arg, quotation)
+                    } else {
+                        format!(" {:?} head {:?} exec {:?} tail each {:?} ", arg, quotation, arg, quotation)
+                    });
                 }
-                Parsed::Quotation(new_quot)
+                arg
             }
             _ => panic!("invalid closure count sent to each function"),
         }
@@ -732,6 +734,7 @@ impl FromStr for Op {
             "pop" => Ok(Op::Pop),
             "swap" => Ok(Op::Swap),
             "dup" => Ok(Op::Dup),
+            "()" => Ok(Op::Void),
             _ => Err(format!("unknown operation: {}", s)),
         }
     }
