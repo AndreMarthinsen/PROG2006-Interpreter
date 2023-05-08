@@ -593,3 +593,12 @@ mod test_functions {
         assert_eq!(t("mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10"), "110");
     }
 }
+
+mod test_extra {
+    use bprog::t;
+
+    #[test]
+    fn test_void() {
+        assert_eq!(t("1 ()"), "1");
+    }
+}
