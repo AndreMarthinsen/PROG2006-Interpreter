@@ -8,6 +8,7 @@ use std::io::{Write};
 use std::str::FromStr;
 use crate::numeric::Numeric;
 use crate::parsed::Parsed;
+use crate::parsing::parse_to_quotation;
 use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, unary};
 
@@ -350,22 +351,38 @@ impl Op {
 
     //// HIGHER ORDER FUNCTION DEFINITIONS ////
 
+    /// Defines the map function.
+    ///
+    /// # Examples
+    ///
+    /// ``
+    /// use bprog;
+    /// use bprog::op::Op;
+    /// use bprog::parsed::Parsed;
+    /// use bprog::parsing::parse_to_quotation;
+    /// use bprog::types::Type;
+    ///
+    /// let quotation = parse_to_quotation("+");
+    /// let lhs = Parsed::Function(Op::Add).coerce(&Type::Quotation);
+    /// let rhs = quotation;
+    /// assert_eq!(lhs, rhs)
+    ///
+    /// ``
+    ///
+    /// {
     pub fn exec_map(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
             Modifiers::Unary(quotation) => {
-                let mut new_quot = VecDeque::new();
-                new_quot.push_back(Parsed::List(Vec::new()));
                 if let Some(list) = arg.get_contents() {
-                    list.iter().for_each(|p| {
-                        new_quot.push_back(p.clone());
-                        new_quot.push_back(quotation.clone());
-                        new_quot.push_back(Parsed::Function(Op::Exec));
-                        new_quot.push_back(Parsed::List(Vec::new()));
-                        new_quot.push_back(Parsed::Function(Op::Cons));
-                        new_quot.push_back(Parsed::Function(Op::Append))
-                    })
+                    return parse_to_quotation( if list.len() == 0 {
+                        "[ ]".to_string()
+                    } else if list.len() == 1 {
+                        format!(" {:?} head {} exec [ ] cons", arg, quotation)
+                    } else {
+                        format!(" {:?} head {} exec {:?} tail map {} cons ", arg, quotation, arg, quotation)
+                    });
                 }
-                Parsed::Quotation(new_quot)
+                arg
             }
             _ => panic!("invalid closure count sent to map function"),
         }
@@ -411,6 +428,8 @@ impl Op {
         }
     }
 
+    /// Retrieves the Signature of a function, containing details about
+    /// argument and return constraints.
     pub fn get_signature(&self) -> Signature {
         match self {
             Op::Void => Self::get_void_sig(),
