@@ -371,16 +371,14 @@ impl Op {
     /// {
     pub fn exec_map(arg: Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => {
-                if let Some(list) = arg.get_contents() {
-                    return parse_to_quotation(
-                        format!(
-                            "{:?} length 0 > if {{  {:?} head {:?} exec {:?} tail map {:?} cons }} {{ [ ] }} ",
-                            arg, arg, quotation, arg, quotation
-                        )
-                    );
-                }
-                arg
+            Modifiers::Unary(mut quotation) => {
+                quotation = quotation.coerce(&Type::Quotation);
+                return parse_to_quotation(
+                    format!(
+                        "{:?} length 0 > if {{  {:?} head {:?} exec {:?} tail map {:?} cons }} {{ [ ] }} ",
+                        arg, arg, quotation, arg, quotation
+                    )
+                );
             }
             _ => panic!("invalid closure count sent to map function"),
         }
@@ -390,37 +388,26 @@ impl Op {
         match c {
             Modifiers::Unary( mut quotation) => {
                 quotation = quotation.coerce(&Type::Quotation);
-                if let Some(list) = arg.get_contents() {
-                    return parse_to_quotation(
-                        format!(
-                            " {:?} length 0 > if {{ {:?} head {:?} exec {:?} tail each {:?} }} {{ }} ",
-                            arg,  arg, quotation, arg, quotation)
-                    );
-                }
-                arg
+                return parse_to_quotation(
+                    format!(
+                        " {:?} length 0 > if {{ {:?} head {:?} exec {:?} tail each {:?} }} {{ }} ",
+                        arg,  arg, quotation, arg, quotation)
+                );
             }
             _ => panic!("invalid closure count sent to each function"),
         }
     }
 
 
-
-
-
-
     pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => {
-                let mut new_quot = VecDeque::new();
-                new_quot.push_back(rhs.clone());
-                if let Some(list) = lhs.get_contents() {
-                    list.iter().for_each(|p| {
-                        new_quot.push_back(p.clone());
-                        new_quot.push_back(quotation.coerce(&Type::Quotation));
-                        new_quot.push_back(Parsed::Function(Op::Exec));
-                    })
-                }
-                Parsed::Quotation(new_quot)
+            Modifiers::Unary(mut quotation) => {
+                let quotation = quotation.coerce(&Type::Quotation);
+                return parse_to_quotation(
+                    format!(
+                        " {:?} length 0 > if {{ {:?} {:?} head {:?} exec {:?} tail swap foldl {:?} }} {{ {:?} }}  ",
+                        lhs,  rhs, lhs, quotation, lhs, quotation, rhs)
+                );
             },
             _ => panic!("invalid closure count sent to foldl function")
         }
