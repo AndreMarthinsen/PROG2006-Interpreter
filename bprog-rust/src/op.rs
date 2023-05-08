@@ -32,12 +32,12 @@ pub enum Op {
     And,
     Or,
     Not,
-    ListHead,
-    ListTail,
-    ListEmpty,
-    ListLength,
-    ListCons,
-    ListAppend,
+    Head,
+    Tail,
+    Empty,
+    Length,
+    Cons,
+    Append,
     Each,
     Map,
     Foldl,
@@ -64,385 +64,566 @@ impl Op {
 
     pub fn exec_nullary(&self, c: Closures) -> Parsed {
         match self {
-            Op::IORead => {
-                print!("input: ");
-                io::stdout().flush().unwrap();
-                let mut string = String::new();
-                if let Ok(_) = io::stdin().read_line(&mut string) {
-                    string.pop();
-                    Parsed::String(string)
-                } else {
-                    Parsed::Error(StackError::InvalidRight)
-                }
-            }
-            _ => Parsed::Error(StackError::InvalidRight)
+            Op::IORead => Self::exec_ioread(),
+            Op::Void => Self::exec_void(),
+            _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
 
     pub fn exec_unary(&self, arg: Parsed, c: Closures) -> Parsed {
         match self {
-            Op::IOPrint => {
-                println!("output: {}", arg);
-                Parsed::Void
-            },
-            Op::ParseInt => {
-                match arg {
-                    Parsed::String(s) =>  {
-                        return if let Ok(i) = s.parse::<i128>() {
-                            Parsed::Num(Numeric::Integer(i))
-                        } else {
-                            Parsed::Error(StackError::Overflow)
-                        }
-                    },
-                    _ => panic!("bug: argument type not implemented for parseInteger")
-                }
-            },
-            Op::ParseFloat => {
-                match arg {
-                    Parsed::String(s) =>  {
-                        return if let Ok(f) = s.parse::<f64>() {
-                            Parsed::Num(Numeric::Float(f))
-                        } else {
-                            Parsed::Error(StackError::Overflow)
-                        }
-                    },
-                    _ => panic!("bug: argument type not implemented for parseFloat")
-                }
-            },
-            Op::ParseWords => {
-                match arg {
-                    Parsed::String(s) => {
-                        Parsed::List(
-                            s.split_whitespace().map(|s| Parsed::String(s.to_string())).collect::<Vec<Parsed>>()
-                        )
-                    },
-                    _ => panic!("bug: argument type not implemented for words")
-                }
-            }
-            Op::ListEmpty => {
-                Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
-            },
-            Op::ListLength =>  {
-                arg.size()
-            },
-            Op::ListHead => {
-                match arg {
-                    Parsed::List(v) => {
-                        if let Some(val) = v.get(0){
-                            val.clone()
-                        } else {
-                            Parsed::Error(StackError::InvalidRight)
-                        }
-                    },
-                    _ => panic!("head not supported for {}", arg)
-                }
-            },
-            Op::ListTail => {
-                match arg {
-                    Parsed::List(v) => {
-                        if !v.is_empty() {
-                            Parsed::List(v[1..].to_vec())
-                        } else {
-                            Parsed::Error(StackError::InternalBug)
-                        }
-                    },
-                    _ => panic!("tail not support")
-                }
-            },
-            Op::Not => {
-                -arg
-            }
-            Op::Pop => {
-                Parsed::Void
-            },
-            Op::Dup => {
-                Parsed::Quotation(VecDeque::from(vec![arg.clone(), arg.clone()]))
-            },
-            Op::Exec => {
-                match arg.coerce(&Type::Quotation) {
-                    Parsed::Quotation(q) => {
-                        Parsed::Quotation(q.clone())
-                    },
-                    // TODO: Define
-                    _ => Parsed::Error(StackError::Undefined)
-                }
-            },
-            Op::If => {
-                match c {
-                    Closures::Binary(then_quotation, else_quotation) => {
-                        if arg == Parsed::Bool(true) {
-                            then_quotation.coerce(&Type::Quotation)
-                        } else {
-                            else_quotation.coerce(&Type::Quotation)
-                        }
-                    },
-                    _ => panic!("Invalid Closure count sent to if function")
-                }
-
-            },
-            Op::Times => {
-                match c {
-                    Closures::Unary(quotation) => {
-                        match arg {
-                            Parsed::Num(Numeric::Integer(i)) => {
-                                let mut new_quot = VecDeque::new();
-                                for _ in 0..i {
-                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
-                                    new_quot.push_back(Parsed::Function(Op::Exec));
-                                }
-                                Parsed::Quotation(new_quot)
-                            },
-                            //TODO: Stack error definition
-                            _ => Parsed::Error(StackError::Undefined)
-                        }
-                    },
-                    _ => panic!("Invalid Closure count sent to times function")
-                }
-            },
-            Op::Map => {
-                match c {
-                    Closures::Unary(quotation) => {
-                        let mut new_quot = VecDeque::new();
-                        new_quot.push_back(Parsed::List(Vec::new()));
-                        if let Some(list) = arg.get_contents() {
-                            list.iter()
-                                .for_each(|p| {
-                                    new_quot.push_back(p.clone());
-                                    new_quot.push_back(quotation.clone());
-                                    new_quot.push_back(Parsed::Function(Op::Exec));
-                                    new_quot.push_back(Parsed::List(Vec::new()));
-                                    new_quot.push_back(Parsed::Function(Op::ListCons));
-                                    new_quot.push_back(Parsed::Function(Op::ListAppend))
-                                })
-                        }
-                        Parsed::Quotation(new_quot)
-                    },
-                    _ => panic!("invalid closure count sent to map function")
-
-                }
-            },
-            Op::Each => {
-                match c {
-                    Closures::Unary(quotation) => {
-                        let mut new_quot = VecDeque::new();
-                        if let Some(list) = arg.get_contents() {
-                            list.iter()
-                                .for_each(|p| {
-                                    new_quot.push_back(p.clone());
-                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
-                                    new_quot.push_back(Parsed::Function(Op::Exec));
-                                })
-                        }
-                        Parsed::Quotation(new_quot)
-                    },
-                    _ => panic!("invalid closure count sent to each function")
-
-                }
-            },
-
-            _ => Parsed::Error(StackError::InvalidBoth)
+            Op::IOPrint => Self::exec_print(arg),
+            Op::ParseInt => Self::exec_parse_int(arg),
+            Op::ParseFloat => Self::exec_parse_float(arg),
+            Op::ParseWords => Self::exec_words(arg),
+            Op::Empty => Self::exec_empty(arg),
+            Op::Length => Self::exec_length(arg),
+            Op::Head => Self::exec_head(arg),
+            Op::Tail => Self::exec_tail(arg),
+            Op::Not => Self::exec_not(arg),
+            Op::Pop => Self::exec_pop(arg),
+            Op::Dup => Self::exec_dup(arg),
+            Op::Exec => Self::exec_exec(arg),
+            Op::If => Self::exec_if(arg, c),
+            Op::Times => Self::exec_times(arg, c),
+            Op::Map => Self::exec_map(arg, c),
+            Op::Each => Self::exec_each(arg, c),
+            _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
 
     pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Closures) -> Parsed {
         match self {
-            Op::Add => lhs + rhs,
-            Op::Sub => lhs - rhs,
-            Op::Mul => lhs * rhs,
-            Op::Div => &lhs.coerce(&Type::Float) / &rhs.coerce(&Type::Float),
-            Op::IntDiv =>
-                (&lhs.coerce(&Type::Integer) / &rhs.coerce(&Type::Integer)).coerce(&Type::Integer),
-            Op::GT => Parsed::Bool(lhs > rhs),
-            Op::LT => Parsed::Bool(lhs < rhs),
-            Op::EQ => Parsed::Bool(lhs == rhs),
-            Op::And => lhs & rhs,
-            Op::Or => lhs | rhs,
-            Op::ListAppend => lhs + rhs,
-            Op::ListCons => {
-                &Parsed::List(vec![lhs.clone()]) + rhs
-            },
-            Op::Swap => {
-                Parsed::Quotation(VecDeque::from(vec![rhs.clone(), lhs.clone()]))
-            },
-            Op::Foldl => {
-                match c {
-                    Closures::Unary(quotation) => {
-                        let mut new_quot = VecDeque::new();
-                        new_quot.push_back(rhs.clone());
-                        if let Some(list) = lhs.get_contents() {
-                            list.iter()
-                                .for_each(|p| {
-                                    new_quot.push_back(p.clone());
-                                    new_quot.push_back(quotation.coerce(&Type::Quotation));
-                                    new_quot.push_back(Parsed::Function(Op::Exec));
-                                })
-                        }
-                        println!("{}", Parsed::Quotation(new_quot.clone()));
-                        Parsed::Quotation(new_quot)
-                    },
-                    _ => panic!("invalid closure count sent to map function")
-                }
-            }
-            _ => Parsed::Error(StackError::Undefined)
+            Op::Add => Self::exec_add(lhs, rhs),
+            Op::Sub => Self::exec_sub(lhs, rhs),
+            Op::Mul => Self::exec_mul(lhs, rhs),
+            Op::Div => Self::exec_div(lhs, rhs),
+            Op::IntDiv => Self::exec_intdiv(lhs, rhs),
+            Op::GT => Self::exec_gt(lhs, rhs),
+            Op::LT => Self::exec_lt(lhs, rhs),
+            Op::EQ => Self::exec_eq(lhs, rhs),
+            Op::And => Self::exec_and(lhs, rhs),
+            Op::Or => Self::exec_or(lhs, rhs),
+            Op::Append => Self::exec_append(lhs, rhs),
+            Op::Cons => Self::exec_cons(lhs, rhs),
+            Op::Swap => Self::exec_swap(lhs, rhs),
+            Op::Foldl => Self::exec_foldl(lhs, rhs, c),
+            _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
 
-    pub fn exec_temary(&self) {
 
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////                               BUILT IN FUNCTION DEFINITIONS                            ////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    //// VOID FUNCTION DEFINITION ////
+
+    fn exec_void() -> Parsed {
+        Parsed::Void
     }
 
+
+
+    //// IO FUNCTION DEFINITIONS ////
+
+    pub fn exec_ioread() -> Parsed {
+        print!("input: ");
+        io::stdout().flush().unwrap();
+        let mut string = String::new();
+        if let Ok(_) = io::stdin().read_line(&mut string) {
+            string.pop();
+            Parsed::String(string)
+        } else {
+            Parsed::Error(StackError::InvalidRight)
+        }
+    }
+
+    pub fn exec_print(arg: Parsed) -> Parsed {
+        println!("output: {}", arg);
+        Parsed::Void
+    }
+
+
+
+    //// PARSING FUNCTION DEFINITIONS ////
+
+    pub fn exec_parse_int(arg: Parsed) -> Parsed {
+        match arg {
+            Parsed::String(s) => {
+                return if let Ok(i) = s.parse::<i128>() {
+                    Parsed::Num(Numeric::Integer(i))
+                } else {
+                    Parsed::Error(StackError::Overflow)
+                }
+            },
+            _ => panic!("bug: argument type not implemented for parseInteger")
+        }
+    }
+
+    pub fn exec_parse_float(arg: Parsed) -> Parsed {
+        match arg {
+            Parsed::String(s) => {
+                return if let Ok(f) = s.parse::<f64>() {
+                    Parsed::Num(Numeric::Float(f))
+                } else {
+                    Parsed::Error(StackError::Overflow)
+                }
+            },
+            _ => panic!("bug: argument type not implemented for parseFloat")
+        }
+    }
+
+    pub fn exec_words(arg: Parsed) -> Parsed {
+        match arg {
+            Parsed::String(s) => {
+                Parsed::List(
+                    s.split_whitespace()
+                        .map(|s| Parsed::String(s.to_string()))
+                        .collect::<Vec<Parsed>>(),
+                )
+            }
+            _ => panic!("bug: argument type not implemented for words"),
+        }
+    }
+
+
+
+    //// ARITHMETIC, ORDERING, EQ, BOOLEAN FUNCTION DEFINITIONS ////
+
+    pub fn exec_add(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs + rhs
+    }
+
+    pub fn exec_sub(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs - rhs
+    }
+
+    pub fn exec_mul(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs * rhs
+    }
+
+    pub fn exec_div(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        &lhs.coerce(&Type::Float) / &rhs.coerce(&Type::Float)
+    }
+
+    pub fn exec_intdiv(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        (&lhs.coerce(&Type::Integer) / &rhs.coerce(&Type::Integer)).coerce(&Type::Integer)
+    }
+
+    pub fn exec_gt(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        Parsed::Bool(lhs > rhs)
+    }
+
+    pub fn exec_lt(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        Parsed::Bool(lhs < rhs)
+    }
+
+    pub fn exec_eq(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        Parsed::Bool(lhs == rhs)
+    }
+
+    pub fn exec_and(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs & rhs
+    }
+
+    pub fn exec_or(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs | rhs
+    }
+
+    pub fn exec_not(arg: Parsed) -> Parsed {
+        -arg
+    }
+
+    //// CONTAINER FUNCTION DEFINITIONS ////
+
+    pub fn exec_empty(arg: Parsed) -> Parsed {
+        Parsed::Bool(arg.size() == Parsed::Num(Numeric::Integer(0)))
+    }
+
+    pub fn exec_length(arg: Parsed) -> Parsed {
+        arg.size()
+    }
+
+    pub fn exec_head(arg: Parsed) -> Parsed {
+        match arg {
+            Parsed::List(v) => {
+                if let Some(val) = v.get(0) {
+                    val.clone()
+                } else {
+                    Parsed::Error(StackError::InvalidRight)
+                }
+            }
+            _ => panic!("head not supported for {}", arg),
+        }
+    }
+
+    pub fn exec_tail(arg: Parsed) -> Parsed {
+        match arg {
+            Parsed::List(v) => {
+                if !v.is_empty() {
+                    Parsed::List(v[1..].to_vec())
+                } else {
+                    Parsed::Error(StackError::InternalBug)
+                }
+            }
+            _ => panic!("tail not support"),
+        }
+    }
+
+    pub fn exec_append(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        lhs + rhs
+    }
+
+    pub fn exec_cons(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        &Parsed::List(vec![lhs.clone()]) + rhs
+    }
+
+
+
+   //// STACK FUNCTION DEFINITIONS ////
+
+    /// Consumes a Parsed value and returns Void.
+    pub fn exec_pop(_: Parsed) -> Parsed {
+        Parsed::Void
+    }
+
+    /// Consumes a Parsed value and returns a Quotation that places
+    /// two instances of the consumed value back onto the stack.
+    pub fn exec_dup(arg: Parsed) -> Parsed {
+        Parsed::Quotation(VecDeque::from(vec![arg.clone(), arg.clone()]))
+    }
+
+    /// Takes two Parsed values and returns a Quotation that puts them back onto
+    /// the sack in reverse order.
+    pub fn exec_swap(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        Parsed::Quotation(VecDeque::from(vec![rhs.clone(), lhs.clone()]))
+    }
+
+
+
+    //// CONTROL FUNCTION DEFINITIONS ////
+
+    pub fn exec_exec(arg: Parsed) -> Parsed {
+        match arg.coerce(&Type::Quotation) {
+            Parsed::Quotation(q) => Parsed::Quotation(q.clone()),
+            // TODO: Define
+            _ => Parsed::Error(StackError::Undefined),
+        }
+    }
+
+    pub fn exec_if(arg: Parsed, c: Closures) -> Parsed {
+        match c {
+            Closures::Binary(then_quotation, else_quotation) => {
+                if arg == Parsed::Bool(true) {
+                    then_quotation.coerce(&Type::Quotation)
+                } else {
+                    else_quotation.coerce(&Type::Quotation)
+                }
+            }
+            _ => panic!("Invalid Closure count sent to if function"),
+        }
+    }
+
+    pub fn exec_times(arg: Parsed, c: Closures) -> Parsed {
+        match c {
+            Closures::Unary(quotation) => match arg {
+                Parsed::Num(Numeric::Integer(i)) => {
+                    let mut new_quot = VecDeque::new();
+                    for _ in 0..i {
+                        new_quot.push_back(quotation.coerce(&Type::Quotation));
+                        new_quot.push_back(Parsed::Function(Op::Exec));
+                    }
+                    Parsed::Quotation(new_quot)
+                }
+                //TODO: Stack error definition
+                _ => Parsed::Error(StackError::Undefined),
+            },
+            _ => panic!("Invalid Closure count sent to times function"),
+        }
+    }
+
+
+
+    //// HIGHER ORDER FUNCTION DEFINITIONS ////
+
+    pub fn exec_map(arg: Parsed, c: Closures) -> Parsed {
+        match c {
+            Closures::Unary(quotation) => {
+                let mut new_quot = VecDeque::new();
+                new_quot.push_back(Parsed::List(Vec::new()));
+                if let Some(list) = arg.get_contents() {
+                    list.iter().for_each(|p| {
+                        new_quot.push_back(p.clone());
+                        new_quot.push_back(quotation.clone());
+                        new_quot.push_back(Parsed::Function(Op::Exec));
+                        new_quot.push_back(Parsed::List(Vec::new()));
+                        new_quot.push_back(Parsed::Function(Op::Cons));
+                        new_quot.push_back(Parsed::Function(Op::Append))
+                    })
+                }
+                Parsed::Quotation(new_quot)
+            }
+            _ => panic!("invalid closure count sent to map function"),
+        }
+    }
+
+    pub fn exec_each(arg: Parsed, c: Closures) -> Parsed {
+        match c {
+            Closures::Unary(quotation) => {
+                let mut new_quot = VecDeque::new();
+                if let Some(list) = arg.get_contents() {
+                    list.iter().for_each(|p| {
+                        new_quot.push_back(p.clone());
+                        new_quot.push_back(quotation.coerce(&Type::Quotation));
+                        new_quot.push_back(Parsed::Function(Op::Exec));
+                    })
+                }
+                Parsed::Quotation(new_quot)
+            }
+            _ => panic!("invalid closure count sent to each function"),
+        }
+    }
+
+
+
+
+
+
+    pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Closures) -> Parsed {
+        match c {
+            Closures::Unary(quotation) => {
+                let mut new_quot = VecDeque::new();
+                new_quot.push_back(rhs.clone());
+                if let Some(list) = lhs.get_contents() {
+                    list.iter().for_each(|p| {
+                        new_quot.push_back(p.clone());
+                        new_quot.push_back(quotation.coerce(&Type::Quotation));
+                        new_quot.push_back(Parsed::Function(Op::Exec));
+                    })
+                }
+                Parsed::Quotation(new_quot)
+            },
+            _ => panic!("invalid closure count sent to foldl function")
+        }
+    }
 
     pub fn get_signature(&self) -> Signature {
         match self {
-            Op::Void => nullary(Constraint::Void),
-
-            Op::IOPrint =>
-                unary(Constraint::Display, Constraint::Void),
-
-            Op::IORead =>
-                nullary(Constraint::String),
-
-            Op::ParseInt =>
-                unary(Constraint::String, Constraint::Integer),
-
-            Op::ParseFloat =>
-                unary(Constraint::String, Constraint::Float),
-
-            Op::ParseWords =>
-                unary(Constraint::String, Constraint::List),
-
-            Op::Add | Op::Sub | Op::Mul | Op::Div =>
-                homogenous_binary(Constraint::Num, Constraint::Num),
-
-            Op::IntDiv =>
-                homogenous_binary(Constraint::Num, Constraint::Num),
-
-            Op::LT | Op::GT =>
-                homogenous_binary(Constraint::Ord, Constraint::Bool),
-
-            Op::EQ =>  {
-                homogenous_binary(Constraint::Eq, Constraint::Bool)
-            }
-
-            Op::And | Op::Or =>
-                homogenous_binary(Constraint::Boolean, Constraint::Bool),
-
-            Op::Not =>
-                unary(Constraint::Num, Constraint::Num),
-
-            Op::ListHead =>
-                unary(Constraint::List, Constraint::Any),
-
-            Op::ListTail =>
-                unary(Constraint::List, Constraint::List),
-
-            Op::ListEmpty => {
-                unary(Constraint::List, Constraint::Bool)
-            },
-
-            Op::ListLength => {
-                unary(Constraint::Sized, Constraint::Integer)
-            },
-
-            Op::ListCons => {
-                heterogeneous_binary(
-                    Constraint::Any,
-                    Constraint::List,
-                    Constraint::List
-                )
-            },
-
-            Op::ListAppend => {
-                homogenous_binary(Constraint::List, Constraint::List)
-            }
-
-            Op::Each => { //TODO: modifying arguments? quotations expected from tree.
-                let mut sig = unary(Constraint::List, Constraint::Any);
-                sig.modifiers = Params::Unary(
-                    Constraint::Executable
-                );
-                sig
-            },
-
-            Op::Map => {
-                let mut sig = unary(Constraint::List, Constraint::Quotation);
-                sig.modifiers = Params::Unary(Constraint::Quotation);
-                sig
-            },
-            Op::Foldl => {
-                let mut sig = heterogeneous_binary(
-                    Constraint::List,
-                    Constraint::Any,
-                    Constraint::Executable
-                );
-                sig.modifiers = Params::Unary(Constraint::Executable);
-                sig
-            }
-
-            Op::If =>  {
-                let mut sig = unary(Constraint::Boolean, Constraint::Any);
-                sig.modifiers = Params::Binary(Constraint::Any, Constraint::Any);
-                sig
-            },
-
-            Op::Loop => { // TODO: Very unclear how this one should work
-                nullary(Constraint::Void)
-            },
-
-            Op::Times => { // TODO: Ditto
-                let mut sig = unary(Constraint::Integer, Constraint::Any);
-                sig.modifiers = Params::Unary(Constraint::Executable);
-                sig
-            }
-
-            Op::Exec => {
-                unary(Constraint::Executable, Constraint::Executable)
-            }
-
-            Op::Assign => {
-                heterogeneous_binary(
-                    Constraint::Symbol,
-                    Constraint::Any,
-                    Constraint::Void
-                )
-            },
-
-            Op::AssignFunc => {
-                heterogeneous_binary(
-                    Constraint::Symbol,
-                    Constraint::Quotation,
-                    Constraint::Void
-                )
-            }
-
-            Op::AsSymbol => {
-                nullary(Constraint::Symbol)
-            }
-
-            Op::EvalSymbol => {
-                unary(Constraint::Symbol, Constraint::Any)
-            },
-
-            Op::Dup => {
-                unary(Constraint::Any, Constraint::Any)
-            },
-
-            Op::Swap => {
-                heterogeneous_binary(
-                    Constraint::Any,
-                    Constraint::Any,
-                    Constraint::Any
-                )
-            }
-
-            Op::Pop => {
-                unary(Constraint::Any, Constraint::Void)
-            }
+            Op::Void => Self::get_void_sig(),
+            Op::IOPrint => Self::get_print_sig(),
+            Op::IORead => Self::get_read_sig(),
+            Op::ParseInt => Self::get_parse_int_sig(),
+            Op::ParseFloat => Self::get_parse_float_sig(),
+            Op::ParseWords => Self::get_words_sig(),
+            Op::Add | Op::Sub | Op::Mul | Op::Div => Self::get_arithmetic_sig(),
+            Op::IntDiv => Self::get_arithmetic_sig(),
+            Op::LT | Op::GT => Self::get_ord_sig(),
+            Op::EQ => Self::get_eq_sig(),
+            Op::And | Op::Or => Self::get_and_or_sig(),
+            Op::Not => Self::get_not_sig(),
+            Op::Head => Self::get_head_sig(),
+            Op::Tail => Self::get_tail_sig(),
+            Op::Empty => Self::get_empty_sig(),
+            Op::Length => Self::get_length_sig(),
+            Op::Cons => Self::get_cons_sig(),
+            Op::Append => Self::get_append_sig(),
+            Op::Each => Self::get_each_sig(),
+            Op::Map => Self::get_map_sig(),
+            Op::Foldl => Self::get_foldl_sig(),
+            Op::If => Self::get_if_sig(),
+            Op::Loop => Self::get_loop_sig(),
+            Op::Times => Self::get_times_sig(),
+            Op::Exec => Self::get_exec_sig(),
+            Op::Assign => Self::get_assign_sig(),
+            Op::AssignFunc => Self::get_assign_func_sig(),
+            Op::AsSymbol => Self::get_as_symbol_sig(),
+            Op::EvalSymbol => Self::get_eval_symbol_sig(),
+            Op::Dup => Self::get_dup_sig(),
+            Op::Swap => Self::get_swap_sig(),
+            Op::Pop => Self::get_pop_sig(),
         }
     }
+
+    //////////////////////////////// SIGNATURE DEFINITIONS //////////////////////////////////////
+
+    //// VOID /////
+
+    fn get_void_sig() -> Signature {
+        nullary(Constraint::Void)
+    }
+
+    //// IO /////
+
+    fn get_print_sig() -> Signature {
+        unary(Constraint::Display, Constraint::Void)
+    }
+
+    fn get_read_sig() -> Signature {
+        nullary(Constraint::String)
+    }
+
+    //// PARSE ////
+
+    fn get_parse_int_sig() -> Signature {
+        unary(Constraint::String, Constraint::Integer)
+    }
+
+    fn get_parse_float_sig() -> Signature {
+        unary(Constraint::String, Constraint::Float)
+    }
+
+    fn get_words_sig() -> Signature {
+        unary(Constraint::String, Constraint::List)
+    }
+
+    //// ARITHMETIC, ORDERING, EQ, BOOLEAN ////
+
+    fn get_arithmetic_sig() -> Signature {
+        homogenous_binary(Constraint::Num, Constraint::Num)
+    }
+
+    fn get_ord_sig() -> Signature {
+        homogenous_binary(Constraint::Ord, Constraint::Bool)
+    }
+
+    fn get_eq_sig() -> Signature {
+        homogenous_binary(Constraint::Eq, Constraint::Bool)
+    }
+
+    fn get_and_or_sig() -> Signature {
+        homogenous_binary(Constraint::Boolean, Constraint::Bool)
+    }
+
+    fn get_not_sig() -> Signature {
+        unary(Constraint::Num, Constraint::Num)
+    }
+
+    //// CONTAINER OPERATIONS ////
+
+    fn get_head_sig() -> Signature {
+        unary(Constraint::List, Constraint::Any)
+    }
+
+    fn get_tail_sig() -> Signature {
+        unary(Constraint::List, Constraint::List)
+    }
+
+    fn get_empty_sig() -> Signature {
+        unary(Constraint::List, Constraint::Bool)
+    }
+
+    fn get_length_sig() -> Signature {
+        unary(Constraint::Sized, Constraint::Integer)
+    }
+
+    fn get_cons_sig() -> Signature {
+        heterogeneous_binary(
+            Constraint::Any,
+            Constraint::List,
+            Constraint::List
+        )
+    }
+
+    fn get_append_sig() -> Signature {
+        homogenous_binary(Constraint::List, Constraint::List)
+    }
+
+    //// HIGHER ORDER ////
+
+    fn get_each_sig() -> Signature {
+        let mut sig = unary(Constraint::List, Constraint::Any);
+        sig.modifiers = Params::Unary(
+            Constraint::Executable
+        );
+        sig
+    }
+
+    fn get_map_sig() -> Signature {
+        let mut sig = unary(Constraint::List, Constraint::Quotation);
+        sig.modifiers = Params::Unary(Constraint::Quotation);
+        sig
+    }
+
+    pub fn get_foldl_sig() -> Signature {
+        let mut sig = heterogeneous_binary(
+            Constraint::List,
+            Constraint::Any,
+            Constraint::Executable
+        );
+        sig.modifiers = Params::Unary(Constraint::Executable);
+        sig
+    }
+
+    //// CONTROL ////
+
+    pub fn get_if_sig() -> Signature {
+        let mut sig = unary(Constraint::Boolean, Constraint::Any);
+        sig.modifiers = Params::Binary(Constraint::Any, Constraint::Any);
+        sig
+    }
+
+    pub fn get_loop_sig() -> Signature {
+        nullary(Constraint::Void)
+    }
+
+    pub fn get_times_sig() -> Signature {
+        let mut sig = unary(Constraint::Integer, Constraint::Any);
+        sig.modifiers = Params::Unary(Constraint::Executable);
+        sig
+    }
+
+    pub fn get_exec_sig() -> Signature {
+        unary(Constraint::Executable, Constraint::Executable)
+    }
+
+    //// ASSIGNMENT ////
+
+    pub fn get_assign_sig() -> Signature {
+        heterogeneous_binary(
+            Constraint::Symbol,
+            Constraint::Any,
+            Constraint::Void
+        )
+    }
+
+    pub fn get_assign_func_sig() -> Signature {
+        heterogeneous_binary(
+            Constraint::Symbol,
+            Constraint::Quotation,
+            Constraint::Void
+        )
+    }
+
+    pub fn get_as_symbol_sig() -> Signature {
+        nullary(Constraint::Symbol)
+    }
+
+    pub fn get_eval_symbol_sig() -> Signature {
+        unary(Constraint::Symbol, Constraint::Any)
+    }
+
+    //// STACK FUNCTIONS ////
+
+    pub fn get_dup_sig() -> Signature {
+        unary(Constraint::Any, Constraint::Any)
+    }
+
+    pub fn get_swap_sig() -> Signature {
+        heterogeneous_binary(
+            Constraint::Any,
+            Constraint::Any,
+            Constraint::Any
+        )
+    }
+
+    pub fn get_pop_sig() -> Signature {
+        unary(Constraint::Any, Constraint::Void)
+    }
 }
-
-
 
 /// Display for Operations
 impl Display for Op {
@@ -465,12 +646,12 @@ impl Display for Op {
             Op::And => write!(f, "&&"),
             Op::Or => write!(f, "||"),
             Op::Not => write!(f, "not"),
-            Op::ListHead => write!(f, "head"),
-            Op::ListTail => write!(f, "tail"),
-            Op::ListEmpty => write!(f, "empty"),
-            Op::ListLength => write!(f, "length"),
-            Op::ListCons => write!(f, "cons"),
-            Op::ListAppend => write!(f, "append"),
+            Op::Head => write!(f, "head"),
+            Op::Tail => write!(f, "tail"),
+            Op::Empty => write!(f, "empty"),
+            Op::Length => write!(f, "length"),
+            Op::Cons => write!(f, "cons"),
+            Op::Append => write!(f, "append"),
             Op::Each => write!(f, "each"),
             Op::Map => write!(f, "map"),
             Op::Foldl => write!(f, "foldl"),
@@ -512,12 +693,12 @@ impl FromStr for Op {
             "&&" => Ok(Op::And),
             "||" => Ok(Op::Or),
             "not" => Ok(Op::Not),
-            "head" => Ok(Op::ListHead),
-            "tail" => Ok(Op::ListTail),
-            "empty" => Ok(Op::ListEmpty),
-            "length" => Ok(Op::ListLength),
-            "cons" => Ok(Op::ListCons),
-            "append" => Ok(Op::ListAppend),
+            "head" => Ok(Op::Head),
+            "tail" => Ok(Op::Tail),
+            "empty" => Ok(Op::Empty),
+            "length" => Ok(Op::Length),
+            "cons" => Ok(Op::Cons),
+            "append" => Ok(Op::Append),
             "each" => Ok(Op::Each),
             "map" => Ok(Op::Map),
             "foldl" => Ok(Op::Foldl),
