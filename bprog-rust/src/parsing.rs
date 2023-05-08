@@ -5,19 +5,26 @@ use crate::op::Op;
 use crate::utility::to_tokens;
 
 
-/// Parses a vector of string tokens into a list of stack tokens and a remainder.
-///
-/// This function takes a vector of string tokens `tokens` and returns a tuple containing a
-/// vector of stack tokens `parsed` and a vector of remaining tokens `remainder`. The `parsed`
-/// vector contains the stack tokens created by parsing `tokens`. The `remainder` vector
-/// contains any tokens that were not parsed. This function recursively parses tokens until
-/// it encounters a closing brace or bracket.
+/// Parses string tokens into the Parsed enum type, capable of representing
+/// a predefined set of types and functions, such as +, -, float and integer.
 ///
 /// # Arguments
 ///
 /// * `tokens` - A vector of string tokens to be parsed.
 ///
 /// # Examples
+///
+/// ```
+/// use std::collections::VecDeque;
+/// use bprog::parsing::{parse, parse_to_quotation};
+/// use bprog::utility::to_tokens;
+///
+/// let mut  tokens = VecDeque::from(to_tokens("{ 1 + }"));
+/// let expected = parse_to_quotation("1 +".to_string());
+///
+/// assert_eq!(expected, parse(&mut tokens).pop().unwrap())
+///
+/// ```
 ///
 ///
 pub fn parse(tokens: &mut VecDeque<String>) -> Vec<Parsed> {
@@ -62,17 +69,30 @@ pub fn parse(tokens: &mut VecDeque<String>) -> Vec<Parsed> {
     return parsed;
 }
 
-/// Extracts a section of a vector of strings delimited by a specified string.
+/// Extracts a section of a VecDeque<String> container, stopping when finding
+/// the delimiting string. Not finding the delimiter in the container body is
+/// considered a failure.
 ///
-/// This function takes a mutable reference to a vector of strings `tokens` and a string
-/// `delimiter`. It returns an `Option` type containing a tuple of two vectors of strings,
-/// representing a section of `tokens` and the remaining elements of `tokens` respectively.
-/// The section is delimited by the first occurrence of `delimiter` in `tokens`. If `delimiter`
-/// is not found in `tokens`, `None` is returned.
+/// # Arguments
+///
+/// `tokens` - container section is removed from.
+///
+/// `delimiter` - Stop condition. The matching string is removed from `tokens`.
 ///
 /// # Examples
 ///
 /// ```
+/// use std::collections::VecDeque;
+/// use bprog::parsing::get_section;
+/// use bprog::utility::string_vec_deque;
+///
+/// let mut  tokens = string_vec_deque(&["this", "\"", "remainder"]);
+/// let expected = vec!["this".to_string()];
+/// assert_eq!(expected, get_section(&mut tokens, "\"").unwrap());
+///
+/// let mut  tokens = string_vec_deque(&["this", "remainder"]);
+/// assert_eq!(None, get_section(&mut tokens, "\""))
+///
 /// ```
 pub fn get_section (tokens: &mut VecDeque<String>, delimiter: &str) -> Option<Vec<String>> {
     let mut section = Vec::new();
@@ -88,6 +108,24 @@ pub fn get_section (tokens: &mut VecDeque<String>, delimiter: &str) -> Option<Ve
 
 
 /// Parses Integer, Float and Boolean from a string.
+///
+/// # Examples
+///
+/// ```
+/// use bprog::numeric::Numeric;
+/// use bprog::parsed::Parsed;
+/// use bprog::parsing::parse_primitives;
+///
+/// let test = parse_primitives("1.013ui");
+///
+/// assert_eq!(None, test);
+///
+/// let expected = Parsed::Bool(true);
+/// let test = parse_primitives("True").unwrap();
+///
+/// assert_eq!(expected, test)
+///
+/// ```
 pub fn parse_primitives(token: & str) -> Option<Parsed> {
     if let Ok(val) = token.parse::<Numeric>() {
         return Some(Parsed::Num(val));
@@ -104,7 +142,21 @@ pub fn parse_primitives(token: & str) -> Option<Parsed> {
     return None;
 }
 
-
+/// Parses Parsed::Function from &str. Relies on Parsed implementation of FromStr.
+///
+/// # Examples
+///
+/// ```
+/// use bprog::op::Op;
+/// use bprog::parsed::Parsed;
+/// use bprog::parsing::parse_operations;
+///
+/// let expected = Parsed::Function(Op::Add);
+/// let test = parse_operations("+").unwrap();
+///
+/// assert_eq!(expected, test);
+///
+/// ```
 pub fn parse_operations(token: & str) -> Option<Parsed> {
     if let Ok(op) = token.parse::<Op>() {
         return Some(Parsed::Function(op))
@@ -112,7 +164,20 @@ pub fn parse_operations(token: & str) -> Option<Parsed> {
     None
 }
 
-/// Function for use with tests.
+/// Parses a string into a quotation.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::VecDeque;
+/// use bprog::parsed::Parsed;
+/// use bprog::parsing::parse_to_quotation;
+///
+/// let expected = Parsed::Quotation(VecDeque::from(vec![Parsed::Bool(true)]));
+/// let test = parse_to_quotation("True".to_string());
+///
+/// assert_eq!(expected, test)
+/// ```
 pub fn parse_to_quotation(string: String) -> Parsed {
     let parsed = parse(&mut VecDeque::from(to_tokens(&mut string.to_string())));
     Parsed::Quotation(VecDeque::from(parsed))
