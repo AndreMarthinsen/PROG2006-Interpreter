@@ -334,11 +334,10 @@ impl Op {
             Modifiers::Unary(mut quotation) => match arg {
                 Parsed::Num(Numeric::Integer(i)) => {
                     let quotation = quotation.coerce(&Type::Quotation);
-                    return parse_to_quotation(if i == 0 {
-                            " ".to_string()
-                        } else {
-                            format!("{:?} exec {} times {:?}", quotation,  i-1, quotation)
-                        });
+                    return parse_to_quotation(
+                            format!(" {} 0 > if {{ {:?} exec {} 1 - times {:?} }} {{ }} ",
+                                    i, quotation,  i, quotation)
+                        );
                 }
                 //TODO: Stack error definition
                 _ => Parsed::Error(StackError::Undefined),
@@ -374,13 +373,12 @@ impl Op {
         match c {
             Modifiers::Unary(quotation) => {
                 if let Some(list) = arg.get_contents() {
-                    return parse_to_quotation( if list.len() == 0 {
-                        "[ ]".to_string()
-                    } else if list.len() == 1 {
-                        format!(" {:?} head {:?} exec [ ] cons", arg, quotation)
-                    } else {
-                        format!(" {:?} head {:?} exec {:?} tail map {:?} cons ", arg, quotation, arg, quotation)
-                    });
+                    return parse_to_quotation(
+                        format!(
+                            "{:?} length 0 > if {{  {:?} head {:?} exec {:?} tail map {:?} cons }} {{ [ ] }} ",
+                            arg, arg, quotation, arg, quotation
+                        )
+                    );
                 }
                 arg
             }
@@ -393,13 +391,11 @@ impl Op {
             Modifiers::Unary( mut quotation) => {
                 quotation = quotation.coerce(&Type::Quotation);
                 if let Some(list) = arg.get_contents() {
-                    return parse_to_quotation( if list.len() == 0 {
-                        " ".to_string()
-                    } else if list.len() == 1 {
-                        format!(" {:?} head {:?} exec", arg, quotation)
-                    } else {
-                        format!(" {:?} head {:?} exec {:?} tail each {:?} ", arg, quotation, arg, quotation)
-                    });
+                    return parse_to_quotation(
+                        format!(
+                            " {:?} length 0 > if {{ {:?} head {:?} exec {:?} tail each {:?} }} {{ }} ",
+                            arg,  arg, quotation, arg, quotation)
+                    );
                 }
                 arg
             }
