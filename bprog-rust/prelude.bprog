@@ -33,6 +33,13 @@ fizzbuzz
 fun
 
 
+concat
+{
+    [ ] foldl append
+}
+fun
+
+
 reverse
 {
     [ ] foldl { [ ] cons swap append }
@@ -48,13 +55,14 @@ fun
 
 x:xs
 {
-    dup tail swap head :
+    dup tail swap head
 }
 fun
 
+
 xs:x
 {
-    dup head : swap tail
+    dup head swap tail
 }
 fun
 
@@ -81,10 +89,49 @@ init
     {
         dup length 1 ==
         if { pop [ ] }
-        { xs:x  tail append }
+        { reverse x:xs pop reverse }
     }
 }
 fun
 
 
+range
+{
+    dup : swap 1 - times { dup head 1 - swap cons }
+}
+fun
 
+
+factorial
+{
+    range 1 foldl *
+}
+fun
+
+
+fib
+{
+    dup 1 <
+    if
+    { pop [ ] }
+    {
+        [ 1 0 ] swap 1 - times
+        { dup dup head swap tail head + swap cons }
+        tail reverse
+    }
+}
+fun
+
+
+nth_fib
+{
+    dup 1 <
+    if
+    { pop [ ] }
+    {
+        [ 1 0 ] swap 1 - times
+        { dup dup head swap tail head + swap cons }
+        head
+    }
+}
+fun
