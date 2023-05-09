@@ -1,0 +1,90 @@
+
+repeat
+{
+    swap [ ] cons swap times { dup head [ ] cons append } tail
+}
+fun
+
+
+
+odd
+{
+    dup 2 div swap 2 / == if False True
+}
+fun
+
+
+
+fizzbuzz
+{
+    map {
+        dup 15 % 0 ==
+        if { pop " fizzbuzz " }
+        {
+            dup 3 % 0 ==
+            if { pop " fizz " }
+            {
+                dup 5 % 0 ==
+                if { pop " buzz " } ()
+            }
+        }
+    }
+}
+fun
+
+
+reverse
+{
+    [ ] foldl { [ ] cons swap append }
+}
+fun
+
+:
+{
+    [ ]  cons
+}
+fun
+
+
+x:xs
+{
+    dup tail swap head :
+}
+fun
+
+xs:x
+{
+    dup head : swap tail
+}
+fun
+
+
+last
+{
+    dup empty
+    if
+    { pop err " err: last used with empty list " }
+    {
+        dup length 1 ==
+        if { head }
+        { tail last }
+    }
+}
+fun
+
+
+init
+{
+    dup empty
+    if
+    { pop err " err: init used with empty list " }
+    {
+        dup length 1 ==
+        if { pop [ ] }
+        { xs:x  tail append }
+    }
+}
+fun
+
+
+

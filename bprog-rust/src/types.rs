@@ -65,7 +65,7 @@ impl Display for Params {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Params::Nullary =>
-                write!(f, "Void"),
+                write!(f, ""),
             Params::Unary(c) =>
                 write!(f, "{}", c),
             Params::Binary(c1, c2) =>

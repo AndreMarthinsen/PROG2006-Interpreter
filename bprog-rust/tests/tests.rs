@@ -293,6 +293,9 @@ mod test_lists {
         assert_eq!(t("[ 1 2 3 ] head"), "1");
     }
 
+    //#[test] // extra head error
+
+
     #[test]
     fn test_list_length() {
         assert_eq!(t("[ 1 2 3 ] length"), "3");
@@ -410,6 +413,11 @@ mod test_assignments {
         assert_eq!(t("age 20 := [ 10 age ]"), "[10,20]");
     }
 
+    #[test] // extra
+    fn test_variable_re_assignment(){assert_eq!(t("age 20 := ' age 10 := age"), "10")}
+
+    #[test] // extra
+    fn test_eval(){assert_eq!(t("age age 10 := eval"), "10")}
 }
 
 mod test_quotations {
@@ -594,11 +602,43 @@ mod test_functions {
     }
 }
 
-mod test_extra {
+mod test_extra { // other extras
     use bprog::t;
+
+    #[test] // extra
+    fn test_modulo() {
+        assert_eq!(t("10 3 %"), "1")
+    }
 
     #[test]
     fn test_void() {
         assert_eq!(t("1 ()"), "1");
+    }
+
+    #[test]
+    fn test_if_void() {
+        assert_eq!(t("1 False if { 2 } ()"), "1");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_error() {t("err \" this is an error \" ");}
+
+
+    #[test]
+    fn test_stack() {
+        use std::collections::{HashMap, VecDeque};
+        use bprog::interpreter::{Binding, run};
+        use bprog::parsed::Parsed;
+        use bprog::parsing::parse;
+        use bprog::stack::Stack;
+        use bprog::utility::to_tokens;
+
+        let input = "5 times 5 + +";
+        let mut stack: Stack<Parsed> = Stack::new();
+        let mut dictionary: HashMap<String, Binding> = HashMap::new();
+        let parsed = parse(&mut VecDeque::from(to_tokens(&mut input.to_string())));
+        run(&mut stack, &mut VecDeque::from(parsed), &mut dictionary);
+        assert_eq!("15 5 5", stack.contents_to_string())
     }
 }

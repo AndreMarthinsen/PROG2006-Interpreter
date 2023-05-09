@@ -1,8 +1,8 @@
 use std::collections::{HashMap, VecDeque};
-use crate::op::{Op, Modifiers};
+use crate::op::{Op};
 use crate::parsed::Parsed;
 use crate::stack::Stack;
-use crate::stack_error::StackError;
+use crate::stack_error::{arg_mismatch, StackError};
 use crate::types::{Params};
 
 
@@ -15,7 +15,8 @@ pub struct Binding {
 
 
 
-enum Args {
+pub enum Args {
+    Nullary,
     Unary(Parsed),
     Binary(Parsed, Parsed),
     //Temary(Type, Type, Type)
@@ -48,11 +49,15 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &m
                     .collect()));
             }
             Parsed::Function(op) => {
-                exec_op(op, stack, input, bindings )
+                exec_op(&op, stack, input, bindings )
             },
             other => {
                 stack.push(other)
             }
+        }
+        if let Some(Parsed::Error(err)) = stack.top() {
+            println!("{}", err);
+            stack.pop();
         }
     }
 }
@@ -60,96 +65,112 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &m
 
 
 
-fn exec_op(op: Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
+fn exec_op(op: &Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
     let signature = op.clone().get_signature();
     let mut arg  = Parsed::Error(StackError::PopEmpty);
     let mut arg2 = Parsed::Error(StackError::PopEmpty);
-    let mods: Modifiers;
+    let mods: Args;
     let ret;
-
-    if let Ok(m) = get_modifiers(signature.modifiers, input, bindings) {
-        mods = m
-    } else {
-        stack.push(Parsed::Error(StackError::Undefined));
-        return
+    match get_modifiers(&op, input, bindings) {
+        Ok(m) => mods = m,
+        Err(e) => {stack.push(Parsed::Error(e)); return;},
     }
 
     if let Params::Unary(_) | Params::Binary(_, _) = &signature.stack_args {
-        arg = stack.pop().unwrap_or_else(|| Parsed::Error(StackError::PopEmpty));
+        if let Some(t) = stack.pop() {
+            arg = t
+        } else {
+            stack.push(Parsed::Error(StackError::PopEmpty));
+            return;
+        }
     }
     if let Params::Binary(_, _) = &signature.stack_args {
-        arg2 = stack.pop().unwrap_or_else(||Parsed::Error(StackError::PopEmpty));
+        if let Some(t) = stack.pop() {
+            arg2 = t
+        } else {
+            stack.push(Parsed::Error(StackError::PopEmpty));
+            return;
+        }
     }
     match &signature.stack_args {
         Params::Nullary => {
             ret = op.exec_nullary(mods, bindings);
         },
         Params::Unary(c) => {
-            if !c.is_satisfied_by(&arg.get_type()) {
-                print_mismatch_arg(&op, signature.stack_args, &Args::Unary(arg));
-                return;
+            ret = if !c.is_satisfied_by(&arg.get_type()) {
+                Parsed::Error(arg_mismatch(&op, &Args::Unary(arg), true))
+            } else {
+                op.exec_unary(arg, mods, bindings)
             }
-            ret = op.exec_unary(arg, mods, bindings);
         },
         Params::Binary(c1, c2) => {
             // Checks that the constraints of the function signature is satisfied.
-            if !c1.is_satisfied_by(&arg2.get_type()) ||
+            ret = if !c1.is_satisfied_by(&arg2.get_type()) ||
                 !c2.is_satisfied_by(&arg.get_type()) {
-                print_mismatch_arg(&op, signature.stack_args, &Args::Binary(arg2.clone(), arg.clone()))
+                Parsed::Error(
+                         arg_mismatch(&op, &Args::Binary(arg2.clone(), arg.clone()), true))
+            } else {
+                op.exec_binary(&arg2, &arg, mods, bindings)
             }
-            ret = op.exec_binary(&arg2, &arg, mods, bindings);
         },
         _ => panic!("temary arguments not implemented")
     }
-    if signature.ret.is_satisfied_by(&ret.get_type()) {
-        match ret {
-            Parsed::Quotation(q) => {
-                run(stack, &mut q.clone(), bindings)
-            },
-            Parsed::Void => {},
-            _ => stack.push(ret)
-        }} else {
-        println!("{} {} {}", ret, ret.get_type(), signature.ret);
-    };
+
+    match ret {
+        Parsed::Quotation(q) => {
+            run(stack, &mut q.clone(), bindings)
+        },
+        Parsed::Void => {},
+        _ => stack.push(ret)
+    }
 }
 
 
 
-fn get_modifiers(expected: Params, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>)
-    -> Result<Modifiers, StackError> {
+fn get_modifiers(op: &Op, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>)
+    -> Result<Args, StackError> {
+    let expected = op.get_signature().modifiers;
 
     let mut mod1 = Parsed::Error(StackError::Undefined);
     let mut mod2 = Parsed::Error(StackError::Undefined);
     let mods;
     if let Params::Unary(_) | Params::Binary(_,_) = expected {
         if let Some( m) = input.pop_front() {
-            mod1 = resolve_symbol(m, bindings);
+            mod1 = if op.clone() != Op::AsSymbol {
+                resolve_symbol(m, bindings)
+            } else {
+                m
+            }
         } else {
-            return Err(StackError::PopEmpty)
+            return Err(StackError::PrematureEnd)
         }
     }
     if let Params::Binary(_, _) = expected {
         if let Some( m) = input.pop_front() {
-            mod2 = resolve_symbol(m, bindings);
-        }else {
-            return Err(StackError::PopEmpty)
+            mod2 = if op.clone() != Op::AsSymbol {
+                resolve_symbol(m, bindings)
+            } else {
+                m
+            }
+        } else {
+            return Err(StackError::PrematureEnd)
         }
     }
     match expected {
-        Params::Nullary => mods = Ok(Modifiers::None),
+        Params::Nullary => mods = Ok(Args::Nullary),
         Params::Unary(constraint) => {
             if constraint.is_satisfied_by(&mod1.get_type()) {
-                mods = Ok(Modifiers::Unary(mod1))
+                mods = Ok(Args::Unary(mod1));
             } else {
-                mods = Err(StackError::Undefined)
+                return Err(arg_mismatch(&op, &Args::Unary(mod1), false));
             }
         },
         Params::Binary(c1, c2) => {
             if c1.is_satisfied_by(&mod1.get_type()) &&
                 c2.is_satisfied_by(&mod2.get_type()) {
-                mods = Ok(Modifiers::Binary(mod1, mod2))
+                mods = Ok(Args::Binary(mod1, mod2));
             } else {
-                mods = Err(StackError::Undefined)
+                return Err(arg_mismatch(&op, &Args::Binary(mod1, mod2), false));
             }
         },
         _ => panic!("closure arguments defined for max 2 quotations")
@@ -172,47 +193,6 @@ fn resolve_symbol(sym: Parsed, bindings: &mut HashMap<String, Binding>) -> Parse
     }
 }
 
-
-
-
-fn print_mismatch_arg(op: &Op, exp: Params, got: &Args) {
-    match (exp, got) {
-        (Params::Unary(expected), Args::Unary(actual)) => {
-            println!("err: argument of type \x1b[33m{}\x1b[0m with value \x1b[33m{}\x1b[0m does not satisfy constraint in \
-            the function \x1b[36m{}\x1b[0m, with signature (\x1b[31m{}\x1b[0m -> {}).", actual.get_type(), actual, op, expected, op.get_signature().ret)
-        },
-        (Params::Binary(exp1, exp2), Args::Binary(act1, act2)) => {
-            println!("bug: {} {}", act1, act2);
-            let lhs = !exp1.is_satisfied_by(&act1.get_type());
-            let rhs = !exp2.is_satisfied_by(&act2.get_type());
-            let mut do_grammar = "does";
-            print!("err: ");
-            if lhs {
-                print!("first argument of type \x1b[33m{}\x1b[0m with value of \x1b[33m{}\x1b[0m ", act1.get_type(), act1);
-            }
-            if lhs && rhs {
-                do_grammar = "do";
-                print!("and ")
-            }
-            if rhs {
-                print!("second argument of type \x1b[33m{}\x1b[0m with value \x1b[33m{}\x1b[0m ", act2.get_type(), act2);
-            }
-            print!("{} not match constraints in the function \x1b[36m{}\x1b[0m, with signature (", do_grammar, op);
-            if lhs {
-                print!("\x1b[31m{}\x1b[0m, ", exp1)
-            } else {
-                print!("{}, ", exp1)
-            }
-            if rhs {
-                print!("\x1b[31m{}\x1b[0m ", exp2)
-            } else {
-                print!("{} ", exp1)
-            }
-            println!("-> {})", op.get_signature().ret);
-        }
-        _ => {}
-    }
-}
 
 
 

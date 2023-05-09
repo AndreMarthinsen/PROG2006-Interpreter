@@ -6,7 +6,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt::{Display, Formatter};
 use std::io::{Write};
 use std::str::FromStr;
-use crate::interpreter::Binding;
+use crate::interpreter::{Args, Binding};
 use crate::numeric::Numeric;
 use crate::parsed::Parsed;
 use crate::parsing::{ parse_to_quotation};
@@ -14,7 +14,7 @@ use crate::stack_error::StackError;
 use crate::types::{Params, Constraint, heterogeneous_binary, homogenous_binary, nullary, Signature, Type, unary};
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 /// enumerator of operations, i.e. specific functions.
 pub enum Op {
     Void,
@@ -54,29 +54,27 @@ pub enum Op {
     Dup,
     Swap,
     Pop,
+    Mod,
+    Error
 }
 
-pub enum Modifiers {
-    None,
-    Unary(Parsed),
-    Binary(Parsed, Parsed)
-}
 
 impl Op {
 
-    pub fn exec_nullary(&self, mods: Modifiers, _bindings: &mut HashMap<String, Binding>) -> Parsed {
+    pub fn exec_nullary(&self, mods: Args, _bindings: &mut HashMap<String, Binding>) -> Parsed {
         match self {
             Op::IORead => Self::exec_ioread(),
             Op::Void => Self::exec_void(),
             Op::AsSymbol => Self::exec_as_symbol(mods),
             Op::Loop => Self::exec_loop(mods),
+            Op::Error => Self::exec_err(mods),
             _ => panic!("bug:  use of wrong exec_* function for function {}", self)
         }
     }
 
-    fn exec_loop(c: Modifiers) -> Parsed {
+    fn exec_loop(c: Args) -> Parsed {
         match c {
-            Modifiers::Binary( mut quot1, mut quot2) => {
+            Args::Binary(mut quot1, mut quot2) => {
                 quot1 = quot1.coerce(&Type::Quotation);
                 quot2 = quot2.coerce(&Type::Quotation);
                 let ret = format!(
@@ -88,8 +86,8 @@ impl Op {
         }
     }
 
-    fn exec_as_symbol(c: Modifiers ) -> Parsed {
-        if let Modifiers::Unary(Parsed::Symbol(s)) = c {
+    fn exec_as_symbol(c: Args) -> Parsed {
+        if let Args::Unary(Parsed::Symbol(s)) = c {
             return Parsed::Symbol(s.clone());
         }
         panic!("bug: function ' (eval as symbol) fed non symbol as modifier. Check constraints.")
@@ -107,7 +105,7 @@ impl Op {
     }
 
 
-    pub fn exec_unary(&self, arg: Parsed, c: Modifiers, bindings: &mut  HashMap<String, Binding>) -> Parsed {
+    pub fn exec_unary(&self, arg: Parsed, c: Args, bindings: &mut  HashMap<String, Binding>) -> Parsed {
         match self {
             Op::IOPrint => Self::exec_print(arg),
             Op::ParseInt => Self::exec_parse_int(arg),
@@ -130,8 +128,9 @@ impl Op {
         }
     }
 
-    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Modifiers, bindings: &mut HashMap<String, Binding>) -> Parsed {
+    pub fn exec_binary(&self, lhs: &Parsed, rhs: &Parsed, c: Args, bindings: &mut HashMap<String, Binding>) -> Parsed {
         match self {
+            Op::Mod => Self::exec_mod(lhs, rhs),
             Op::Add => Self::exec_add(lhs, rhs),
             Op::Sub => Self::exec_sub(lhs, rhs),
             Op::Mul => Self::exec_mul(lhs, rhs),
@@ -153,7 +152,7 @@ impl Op {
     }
 
 
-    fn exec_assign(lhs: &Parsed, rhs: &Parsed, _c: Modifiers, bindings: &mut HashMap<String, Binding>, func: bool) -> Parsed {
+    fn exec_assign(lhs: &Parsed, rhs: &Parsed, _c: Args, bindings: &mut HashMap<String, Binding>, func: bool) -> Parsed {
         if func && !Constraint::Executable.is_satisfied_by(&rhs.get_type()) {
             panic!("bug: non executable value attempted bound to function. Check constraint system.")
         }
@@ -202,7 +201,7 @@ impl Op {
             string.pop();
             Parsed::String(string)
         } else {
-            Parsed::Error(StackError::InvalidRight)
+            panic!("bug: failed to read from stdin.")
         }
     }
 
@@ -257,6 +256,12 @@ impl Op {
 
 
     //// ARITHMETIC, ORDERING, EQ, BOOLEAN FUNCTION DEFINITIONS ////
+    pub fn exec_mod(lhs: &Parsed, rhs: &Parsed) -> Parsed {
+        if let (Parsed::Num(Numeric::Integer(i)), Parsed::Num(Numeric::Integer(i2))) = (lhs, rhs) {
+            return Parsed::Num(Numeric::Integer(i % i2));
+        }
+        panic!("bug: non integer passed to modulo operation");
+    }
 
     pub fn exec_add(lhs: &Parsed, rhs: &Parsed) -> Parsed {
         lhs + rhs
@@ -315,11 +320,7 @@ impl Op {
     pub fn exec_head(arg: Parsed) -> Parsed {
         match arg {
             Parsed::List(v) => {
-                if let Some(val) = v.get(0) {
-                    val.clone()
-                } else {
-                    Parsed::Error(StackError::InvalidRight)
-                }
+                v.get(0).unwrap_or_else(||&Parsed::Error(StackError::HeadEmpty)).clone()
             }
             _ => panic!("head not supported for {}", arg),
         }
@@ -331,7 +332,7 @@ impl Op {
                 if !v.is_empty() {
                     Parsed::List(v[1..].to_vec())
                 } else {
-                    Parsed::Error(StackError::InternalBug)
+                    panic!("exec_tail: TODO")
                 }
             }
             _ => panic!("tail not support"),
@@ -379,9 +380,9 @@ impl Op {
         }
     }
 
-    pub fn exec_if(arg: Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_if(arg: Parsed, c: Args) -> Parsed {
         match c {
-            Modifiers::Binary(then_quotation, else_quotation) => {
+            Args::Binary(then_quotation, else_quotation) => {
                 if arg == Parsed::Bool(true) {
                     then_quotation.coerce(&Type::Quotation)
                 } else {
@@ -392,9 +393,9 @@ impl Op {
         }
     }
 
-    pub fn exec_times(arg: Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_times(arg: Parsed, c: Args) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => match arg {
+            Args::Unary(quotation) => match arg {
                 Parsed::Num(Numeric::Integer(i)) => {
                     let quotation = quotation.coerce(&Type::Quotation);
                     return parse_to_quotation(
@@ -415,26 +416,11 @@ impl Op {
 
     /// Defines the map function.
     ///
-    /// # Examples
-    ///
-    /// ``
-    /// use bprog;
-    /// use bprog::op::Op;
-    /// use bprog::parsed::Parsed;
-    /// use bprog::parsing::parse_to_quotation;
-    /// use bprog::types::Type;
-    ///
-    /// let quotation = parse_to_quotation("+");
-    /// let lhs = Parsed::Function(Op::Add).coerce(&Type::Quotation);
-    /// let rhs = quotation;
-    /// assert_eq!(lhs, rhs)
-    ///
-    /// ``
     ///
     /// {
-    pub fn exec_map(arg: Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_map(arg: Parsed, c: Args) -> Parsed {
         match c {
-            Modifiers::Unary(mut quotation) => {
+            Args::Unary(mut quotation) => {
                 quotation = quotation.coerce(&Type::Quotation);
                 return parse_to_quotation(
                     format!(
@@ -447,9 +433,9 @@ impl Op {
         }
     }
 
-    pub fn exec_each(arg: Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_each(arg: Parsed, c: Args) -> Parsed {
         match c {
-            Modifiers::Unary( mut quotation) => {
+            Args::Unary(mut quotation) => {
                 quotation = quotation.coerce(&Type::Quotation);
                 return parse_to_quotation(
                     format!(
@@ -462,9 +448,9 @@ impl Op {
     }
 
 
-    pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Modifiers) -> Parsed {
+    pub fn exec_foldl(lhs: &Parsed, rhs: &Parsed, c: Args) -> Parsed {
         match c {
-            Modifiers::Unary(quotation) => {
+            Args::Unary(quotation) => {
                 let quotation = quotation.coerce(&Type::Quotation);
                 return parse_to_quotation(
                     format!(
@@ -486,6 +472,7 @@ impl Op {
             Op::ParseInt => Self::get_parse_int_sig(),
             Op::ParseFloat => Self::get_parse_float_sig(),
             Op::ParseWords => Self::get_words_sig(),
+            Op::Mod => Self::get_mod_sig(),
             Op::Add | Op::Sub | Op::Mul | Op::Div => Self::get_arithmetic_sig(),
             Op::IntDiv => Self::get_arithmetic_sig(),
             Op::LT | Op::GT => Self::get_ord_sig(),
@@ -512,7 +499,21 @@ impl Op {
             Op::Dup => Self::get_dup_sig(),
             Op::Swap => Self::get_swap_sig(),
             Op::Pop => Self::get_pop_sig(),
+            Op::Error => Self::get_err_sig(),
         }
+    }
+
+    fn get_err_sig() -> Signature {
+        let mut sig = nullary(Constraint::Error);
+        sig.modifiers = Params::Unary(Constraint::String);
+        sig
+    }
+
+    fn exec_err(mods: Args) -> Parsed {
+        if let Args::Unary(Parsed::String(err)) = mods {
+            return Parsed::Error(StackError::UserDefined(err.clone()))
+        }
+        panic!("bug: invalid modifier sent to exec_err.")
     }
 
     //////////////////////////////// SIGNATURE DEFINITIONS //////////////////////////////////////
@@ -548,6 +549,9 @@ impl Op {
     }
 
     //// ARITHMETIC, ORDERING, EQ, BOOLEAN ////
+    fn get_mod_sig() -> Signature {
+        homogenous_binary(Constraint::Integer, Constraint::Integer)
+    }
 
     fn get_arithmetic_sig() -> Signature {
         homogenous_binary(Constraint::Num, Constraint::Num)
@@ -706,6 +710,7 @@ impl Display for Op {
             Op::ParseInt => write!(f, "parseInteger"),
             Op::ParseFloat => write!(f, "parseFloat"),
             Op::ParseWords => write!(f, "words"),
+            Op::Mod => write!(f, "%"),
             Op::Add => write!(f, "+"),
             Op::Sub => write!(f, "-"),
             Op::Mul => write!(f, "*"),
@@ -736,7 +741,8 @@ impl Display for Op {
             Op::EvalSymbol => write!(f, "eval"),
             Op::Dup => write!(f, "dup"),
             Op::Swap => write!(f, "swap"),
-            Op::Pop => write!(f, "swap"),
+            Op::Pop => write!(f, "pop"),
+            Op::Error => write!(f, "err"),
         }
     }
 }
@@ -753,6 +759,7 @@ impl FromStr for Op {
             "parseInteger" => Ok(Op::ParseInt),
             "parseFloat" => Ok(Op::ParseFloat),
             "words" => Ok(Op::ParseWords),
+            "%" => Ok(Op::Mod),
             "+" => Ok(Op::Add),
             "-" => Ok(Op::Sub),
             "*" => Ok(Op::Mul),
@@ -785,6 +792,7 @@ impl FromStr for Op {
             "swap" => Ok(Op::Swap),
             "dup" => Ok(Op::Dup),
             "()" => Ok(Op::Void),
+            "err" => Ok(Op::Error),
             _ => Err(format!("unknown operation: {}", s)),
         }
     }

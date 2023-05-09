@@ -32,7 +32,7 @@ impl Neg for Parsed {
         match self {
             Parsed::Num(num) => Parsed::Num(-num),
             Parsed::Bool(b) => Parsed::Bool(!b),
-            _ => Parsed::Error(StackError::InvalidRight)
+            _ => panic!("bug: negation used with inappropriate type.")
         }
     }
 }
@@ -43,7 +43,9 @@ impl<'a, 'b> Add<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> fo
 
     fn add(self, rhs: &'b Parsed) -> Self::Output {
         match (self, rhs) {
-            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 + v2),
+            (Parsed::Num(n), Parsed::Num(n2)) => {
+                Parsed::Num(n + n2)
+            },
             (Parsed::String(s), Parsed::String(s2)) => {
                 Parsed::String(s.clone().add(&s2))
             },
@@ -59,11 +61,14 @@ impl<'a, 'b> Add<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> fo
                 new_list.append(&mut old_list.clone());
                 Parsed::List(new_list)
             }
+            /*
             (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
             (_, Parsed::String(_)) => Parsed::Error(StackError::InvalidLeft),
             (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
             (Parsed::String(_), _) => Parsed::Error(StackError::InvalidRight),
-            (_, _) => Parsed::Error(StackError::InvalidBoth)
+            */
+
+            (_, _) => Parsed::Error(StackError::Undefined)
         }
     }
 }
@@ -75,9 +80,7 @@ type Output = Parsed;
     fn sub(self, rhs: &'b Parsed) -> Self::Output {
         match (self, rhs) {
             (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 - v2),
-            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
-            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
-            (_, _) => Parsed::Error(StackError::InvalidBoth)
+            (_, _) => panic!("bug: subtraction used with inappropriate types.")
         }
     }
 }
@@ -88,10 +91,9 @@ type Output = Parsed;
 
     fn mul(self, rhs: &'b Parsed) -> Self::Output {
         match (self, rhs) {
-            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 * v2),
-            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
-            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
-            (_, _) => Parsed::Error(StackError::InvalidBoth)
+            (Parsed::Num(v1), Parsed::Num(v2)) =>
+                Parsed::Num(v1 * v2),
+            (_, _) => panic!("bug: subtraction used with inappropriate types.")
         }
     }
 }
@@ -101,11 +103,9 @@ impl<'a, 'b> Div<&'b Parsed> for &'a Parsed { //impl<'a, 'b> Add<&'b Numeric> fo
 type Output = Parsed;
 
     fn div(self, rhs: &'b Parsed) -> Self::Output {
-        match (self, rhs) {
-            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(v1 / v2),
-            (_, Parsed::Num(_)) => Parsed::Error(StackError::InvalidLeft),
-            (Parsed::Num(_), _) => Parsed::Error(StackError::InvalidRight),
-            (_, _) => Parsed::Error(StackError::InvalidBoth)
+        match (self.coerce(&Type::Float), rhs.coerce(&Type::Float)) {
+            (Parsed::Num(v1), Parsed::Num(v2)) => Parsed::Num(&v1 / &v2),
+            (_, _) => panic!("bug: subtraction used with inappropriate types.")
         }
     }
 }
@@ -152,7 +152,7 @@ impl Parsed {
             Parsed::String(s) => Parsed::Num(Numeric::Integer(s.len() as i128)),
             Parsed::Quotation(b) => Parsed::Num(Numeric::Integer(b.len() as i128)),
             Parsed::List(l) => Parsed::Num(Numeric::Integer(l.len() as i128)),
-            _ => Parsed::Error(StackError::InvalidLeft)
+            _ => panic!("bug: size used with inappropriate type.")
         }
     }
 
@@ -313,6 +313,9 @@ impl PartialEq for Parsed {
             (Parsed::Error(err1), Parsed::Error(err2)) => err1 == err2,
             (Parsed::Quotation(q), Parsed::Quotation(q2)) => {
                 q.eq(q2)
+            },
+            (Parsed::Function(op), Parsed::Function(op2)) => {
+                *op == *op2
             }
             (_, _) => false
         }

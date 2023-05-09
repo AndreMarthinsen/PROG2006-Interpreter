@@ -32,19 +32,30 @@ pub enum Stack<T: Clone + Display + Debug> {
 
 impl<T:Clone + Display + Debug> Stack<T> {
 
-    /// Prints the contents of the stack top to bottom left to right
-    pub fn display_all_contents(&self) {
-        let mut output = String::from("");
+    /// Returns a formatted string of the stack contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bprog::parsed::Parsed;
+    /// use bprog::stack::Stack;
+    ///
+    /// let mut stack = Stack::new();
+    /// stack.push(Parsed::Bool(true));
+    /// stack.push(Parsed::String("hello world!".to_string()));
+    /// assert_eq!("\"hello world!\" True", stack.contents_to_string())
+    /// ```
+    pub fn contents_to_string(&self) -> String {
+        let mut output = String::new();
         self.iter().for_each(|x| {
             output.push_str(&x.to_string());
             output.push(' ');
         });
-        println!("{}", output);
+        output.pop();
+        format!("{}", output)
     }
 
     /// Constructs a new empty stack
-    ///
-    ///
     pub fn new() -> Self {
         Stack::Empty
     }
@@ -169,6 +180,23 @@ impl<T:Clone + Display + Debug> Default for Stack<T> {
 /// Implements an Iterator for StackIter
 impl <'a, T:Clone + Display + Debug> Iterator for StackIter<'a, T> {
     type Item = &'a T;
+
+    /// # Examples
+    ///
+    /// ```
+    /// use bprog::parsed::Parsed;
+    /// use bprog::stack::Stack;
+    ///
+    /// let mut stack = Stack::new();
+    /// stack.push(Parsed::Bool(true));
+    /// stack.push(Parsed::Bool(false));
+    ///
+    /// let mut iter = stack.iter();
+    /// assert_eq!(Some(&Parsed::Bool(false)), iter.next());
+    /// assert_eq!(Some(&Parsed::Bool(true)), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
     fn next(&mut self) -> Option<Self::Item> {
         match self.stack {
             Stack::Top(val, bottom,_) => {

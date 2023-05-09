@@ -7,7 +7,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 use crate::stack_error::StackError;
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug)]
 /// Numeric encapsulates numeric types such as integers and floats, implementing
 /// basic arithmetic operations such as +, -, / and *.
 pub enum Numeric {
@@ -51,16 +51,28 @@ impl Numeric {
     pub fn as_integer(& self) -> Numeric {
         match self {
             Numeric::Float(val) => Numeric::Integer(*val as i128),
-            non_convertible => *non_convertible
+            _ => self.clone()
         }
     }
 
     /// Attempts to return self converted from any enum variant to Numeric::Float.
     /// If the type cannot be converted to Int, it returns itself.
+    ///
+    /// ```
+    /// use bprog::numeric::Numeric;
+    /// use bprog::parsed::Parsed;
+    /// use bprog::types::Type;
+    ///
+    /// let start = Parsed::Num(Numeric::Float(1.0));
+    /// let coerced = start.coerce(&Type::Float);
+    ///
+    /// assert_eq!(start, coerced)
+    ///
+    /// ```
     pub fn as_float(& self) -> Numeric {
         match self {
             Numeric::Integer(val) => Numeric::Float(*val as f64),
-            non_convertible => *non_convertible
+            _ => self.clone()
         }
     }
 }
