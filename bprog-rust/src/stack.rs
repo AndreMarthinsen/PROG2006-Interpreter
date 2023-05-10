@@ -18,23 +18,6 @@
 //!
 //! # Examples
 //!
-//! ```
-//! use stack::Stack;
-//!
-//! let mut stack = Stack::new();
-//! assert_eq!(Stack::Empty, stack);
-//!
-//! stack.push(5);
-//! assert_eq!(5, *stack.top().unwrap());
-//! assert_eq!(1, stack.size());
-//!
-//! let top = stack.pop().unwrap();
-//! assert_eq!(5, top);
-//!
-//! assert_eq!(true, stack.is_empty());
-//! ```
-
-
 use std::fmt::{Debug, Display};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -49,24 +32,30 @@ pub enum Stack<T: Clone + Display + Debug> {
 
 impl<T:Clone + Display + Debug> Stack<T> {
 
-    /// Prints the contents of the stack top to bottom left to right
-    pub fn display_all_contents(&self) {
-        let mut output = String::from("top: ");
+    /// Returns a formatted string of the stack contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bprog::parsed::Parsed;
+    /// use bprog::stack::Stack;
+    ///
+    /// let mut stack = Stack::new();
+    /// stack.push(Parsed::Bool(true));
+    /// stack.push(Parsed::String("hello world!".to_string()));
+    /// assert_eq!("\"hello world!\" True", stack.contents_to_string())
+    /// ```
+    pub fn contents_to_string(&self) -> String {
+        let mut output = String::new();
         self.iter().for_each(|x| {
             output.push_str(&x.to_string());
             output.push(' ');
         });
-        output.push_str(" :bottom");
-        println!("{}", output);
+        output.pop();
+        format!("{}", output)
     }
 
     /// Constructs a new empty stack
-    ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// assert_eq!(Stack::Empty, stack);
-    /// ```
-    ///
     pub fn new() -> Self {
         Stack::Empty
     }
@@ -76,11 +65,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     /// # Arguments
     /// `val`- An object of type T to be pushed onto the stack.
     ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// stack.push(5);
-    /// assert_eq!(5, *stack.top());
-    /// ```
     ///
     pub fn push(&mut self, val: T) {
         match self {
@@ -100,14 +84,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     /// Some(T) if the stack is non-empty,
     /// None otherwise.
     ///
-    /// ```
-    /// let mut stack = stack::Stack::new();
-    /// stack.push(5);
-    /// let top = stack.pop().unwrap();
-    ///
-    /// assert_eq!(top, 6);
-    /// assert_eq!(Stack::Empty, stack);
-    /// ```
     ///
     pub fn pop(&mut self) -> Option<T> {
         match std::mem::replace(self, Stack::Empty) {
@@ -138,11 +114,6 @@ impl<T:Clone + Display + Debug> Stack<T> {
     ///
     /// true if empty, false otherwise;
     ///
-    /// ```
-    /// let stack = Stack::new();
-    /// assert_eq!(true, stack.is_empty());
-    ///
-    /// ```
     pub fn is_empty(&self) -> bool {
         match self {
             Stack::Empty => true,
@@ -161,6 +132,11 @@ impl<T:Clone + Display + Debug> Stack<T> {
             Stack::Empty => 0,
             Stack::Top(_, _, size) => *size
         }
+    }
+
+    /// Empties the stack of all contents.
+    pub fn clear(&mut self) {
+        while !self.is_empty() { self.pop().unwrap(); }
     }
 
     /// Returns an iterator over the stacks contents.
@@ -209,6 +185,23 @@ impl<T:Clone + Display + Debug> Default for Stack<T> {
 /// Implements an Iterator for StackIter
 impl <'a, T:Clone + Display + Debug> Iterator for StackIter<'a, T> {
     type Item = &'a T;
+
+    /// # Examples
+    ///
+    /// ```
+    /// use bprog::parsed::Parsed;
+    /// use bprog::stack::Stack;
+    ///
+    /// let mut stack = Stack::new();
+    /// stack.push(Parsed::Bool(true));
+    /// stack.push(Parsed::Bool(false));
+    ///
+    /// let mut iter = stack.iter();
+    /// assert_eq!(Some(&Parsed::Bool(false)), iter.next());
+    /// assert_eq!(Some(&Parsed::Bool(true)), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
     fn next(&mut self) -> Option<Self::Item> {
         match self.stack {
             Stack::Top(val, bottom,_) => {

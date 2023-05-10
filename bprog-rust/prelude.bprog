@@ -1,0 +1,140 @@
+
+repeat
+{
+    swap [ ] cons swap times { dup head [ ] cons append } tail
+}
+fun
+
+
+
+odd
+{
+    dup 2 div swap 2 / == if False True
+}
+fun
+
+
+
+fizzbuzz
+{
+    map {
+        dup 15 % 0 ==
+        if { pop " fizzbuzz " }
+        {
+            dup 3 % 0 ==
+            if { pop " fizz " }
+            {
+                dup 5 % 0 ==
+                if { pop " buzz " } ()
+            }
+        }
+    }
+}
+fun
+
+
+concat
+{
+    [ ] foldl append
+}
+fun
+
+
+reverse
+{
+    [ ] foldl { [ ] cons swap append }
+}
+fun
+
+:
+{
+    [ ]  cons
+}
+fun
+
+
+x:xs
+{
+    dup tail swap head
+}
+fun
+
+
+xs:x
+{
+    dup head swap tail
+}
+fun
+
+
+last
+{
+    dup empty
+    if
+    { pop err " err: last used with empty list " }
+    {
+        dup length 1 ==
+        if { head }
+        { tail last }
+    }
+}
+fun
+
+
+init
+{
+    dup empty
+    if
+    { pop err " err: init used with empty list " }
+    {
+        dup length 1 ==
+        if { pop [ ] }
+        { reverse x:xs pop reverse }
+    }
+}
+fun
+
+
+range
+{
+    dup : swap 1 - times { dup head 1 - swap cons }
+}
+fun
+
+
+factorial
+{
+    dup 0 <
+    if
+    { err " err: factorial is not defined for negative numbers! " }
+    { range 1 foldl * }
+}
+fun
+
+
+fib
+{
+    dup 1 <
+    if
+    { pop [ ] }
+    {
+        [ 1 0 ] swap 1 - times
+        { dup dup head swap tail head + swap cons }
+        tail reverse
+    }
+}
+fun
+
+
+nth_fib
+{
+    dup 1 <
+    if
+    { pop [ ] }
+    {
+        [ 1 0 ] swap 1 - times
+        { dup dup head swap tail head + swap cons }
+        head
+    }
+}
+fun

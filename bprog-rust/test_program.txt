@@ -1,11 +1,30 @@
+" this is a program test " print
+" what is your name? " print read
+" That's a pretty nice name, " swap " ! " append append print
+" Now, are you ready? If you answer yes, we'll go visit the moon. " print read
+" yes " == if
 {
-  if
-  { " there was True on the stack " print }
-  { " there was False on the stack " print }
+    " count-down! " print
+    10 10 times { dup print 1 - " . . . " print }
+    " lift-off! . . . . . " print
+    " Hmm. Didn't seem to work. How about we play around with some fibonacci numbers instead? " print
+    " Input a whole number, and you'll get a list with n fibonacci numbers: " print read
+    parseInteger
+    fib print
+    " Nice... How about a factorial? Input a whole positive number, and you'll get n! " print
+    " Or ... if you try a negative number, something might blow up... " print read
+    parseInteger factorial print
+    " Neato. Want to try again? "
+    loop { " Neat! Want to try again? " print read " yes " == not }
+    {
+        " input an integer: " read
+        parseInteger
+        factorial print
+    }
+    " Sadly there is no overflow check implemented, so for values over 35 or so, it'll just saturate. " print
 }
-[ 1 2 3 ]
-[ " hello " " world " ]
-[ 1 " hello " 2 " world " [ False True ] hello_symbol ]
-3 10 > if
-{ " 3 is MORE than 10 " print }
-{ " 3 is LESS then 10 " print }
+{
+    " Oh well, I suppose staying home ain't all that bad either! " print
+}
+" done "
+
