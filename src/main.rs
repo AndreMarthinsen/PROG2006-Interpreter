@@ -90,7 +90,7 @@ fn main() {
     let mut stack: Stack<Parsed> = Stack::new();
     let mut dictionary: HashMap<String, Binding> = HashMap::new();
 
-    let mut prelude = File::open("prelude.bprog").unwrap();
+    let mut prelude = File::open("./prelude.bprog").unwrap();
     if let Ok(mut pre_definitions) = get_input(Some(&mut prelude)) {
         let mut run_tokens = VecDeque::from(parse(&mut to_tokens(&mut pre_definitions)));
         run(&mut stack, &mut run_tokens, &mut dictionary, true);
