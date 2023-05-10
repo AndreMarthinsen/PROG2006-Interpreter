@@ -104,7 +104,10 @@ fun
 
 factorial
 {
-    range 1 foldl *
+    dup 0 <
+    if
+    { err " err: factorial is not defined for negative numbers! " }
+    { range 1 foldl * }
 }
 fun
 

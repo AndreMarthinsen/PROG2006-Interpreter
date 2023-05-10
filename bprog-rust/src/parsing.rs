@@ -58,7 +58,8 @@ pub fn parse(tokens: &mut VecDeque<String>) -> Vec<Parsed> {
                     Some(section) => {
                         parsed.push(Parsed::String(section.join(" ")));
                     }
-                    None => {println!("didnt work");}
+                    None => {panic!("\x1b[31merr: failed to find terminating \" token for string \
+                    while parsing input.\x1b[0m")}
                 };
             },
             other => {

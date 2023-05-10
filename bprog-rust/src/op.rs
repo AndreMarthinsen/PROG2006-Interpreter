@@ -194,7 +194,7 @@ impl Op {
     //// IO FUNCTION DEFINITIONS ////
 
     pub fn exec_ioread() -> Parsed {
-        print!("input: ");
+        print!("input : ");
         io::stdout().flush().unwrap();
         let mut string = String::new();
         if let Ok(_) = io::stdin().read_line(&mut string) {
@@ -600,7 +600,7 @@ impl Op {
     }
 
     fn get_append_sig() -> Signature {
-        homogenous_binary(Constraint::List, Constraint::List)
+        homogenous_binary(Constraint::Sized, Constraint::Sized)
     }
 
     //// HIGHER ORDER ////

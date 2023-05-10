@@ -638,7 +638,7 @@ mod test_extra { // other extras
         let mut stack: Stack<Parsed> = Stack::new();
         let mut dictionary: HashMap<String, Binding> = HashMap::new();
         let parsed = parse(&mut VecDeque::from(to_tokens(&mut input.to_string())));
-        run(&mut stack, &mut VecDeque::from(parsed), &mut dictionary);
+        run(&mut stack, &mut VecDeque::from(parsed), &mut dictionary, true);
         assert_eq!("15 5 5", stack.contents_to_string())
     }
 }

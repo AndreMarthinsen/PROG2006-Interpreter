@@ -24,18 +24,17 @@ pub enum Args {
 
 
 
-pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
+pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>, fatal: bool) {
     while let Some(p) = input.pop_front() {
         match p.clone() {
-            Parsed::Error(e) => {
-                println!("runtime error: {}", e);
+            Parsed::Error(_) => {
                 stack.push(p);
                 break;
             }
             Parsed::Symbol(s) => {
                 if let Some (val) = bindings.get(&s) {
                     if val.function {
-                        run(stack, &mut VecDeque::from(val.value.get_contents().unwrap()), bindings)
+                        run(stack, &mut VecDeque::from(val.value.get_contents().unwrap()), bindings, fatal)
                     } else {
                         stack.push(val.value.clone())
                     }
@@ -49,15 +48,17 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &m
                     .collect()));
             }
             Parsed::Function(op) => {
-                exec_op(&op, stack, input, bindings )
+                exec_op(&op, stack, input, bindings, fatal)
             },
             other => {
                 stack.push(other)
             }
         }
         if let Some(Parsed::Error(err)) = stack.top() {
-            println!("{}", err);
-            stack.pop();
+            if fatal { panic!("{}", err)} else { println!("{}", err)}
+            stack.clear();
+            stack.push(p);
+            break;
         }
     }
 }
@@ -65,7 +66,7 @@ pub fn run(stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &m
 
 
 
-fn exec_op(op: &Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>) {
+fn exec_op(op: &Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bindings: &mut HashMap<String, Binding>, fatal: bool) {
     let signature = op.clone().get_signature();
     let mut arg  = Parsed::Error(StackError::PopEmpty);
     let mut arg2 = Parsed::Error(StackError::PopEmpty);
@@ -118,7 +119,7 @@ fn exec_op(op: &Op, stack: &mut Stack<Parsed>, input: &mut VecDeque<Parsed>, bin
 
     match ret {
         Parsed::Quotation(q) => {
-            run(stack, &mut q.clone(), bindings)
+            run(stack, &mut q.clone(), bindings, fatal)
         },
         Parsed::Void => {},
         _ => stack.push(ret)

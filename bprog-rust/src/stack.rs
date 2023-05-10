@@ -134,6 +134,11 @@ impl<T:Clone + Display + Debug> Stack<T> {
         }
     }
 
+    /// Empties the stack of all contents.
+    pub fn clear(&mut self) {
+        while !self.is_empty() { self.pop().unwrap(); }
+    }
+
     /// Returns an iterator over the stacks contents.
     pub fn iter(&self) -> impl Iterator<Item=&T> {
         self.into_iter()

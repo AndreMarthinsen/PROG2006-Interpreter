@@ -35,14 +35,13 @@ pub enum StackError { // TODO: Keep as a single error type, or make specific var
 impl Display for StackError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            StackError::Overflow => write!(f, "err: numeric overflow"),
-            StackError::ZeroDiv=> write!(f, "err: zero division"),
-            StackError::PopEmpty => write!(f, "err: attempted to pop empty stack!"),
-            StackError::PrematureEnd => write!(f, "expected more program input, but none was found."),
-            StackError::InvalidCoercion => write!(f, "err: cannot coerce operands to target type"),
-            StackError::Undefined => write!(f, "ERROR MESSAGE PLACEHOLDER"),
+            StackError::Overflow => write!(f, "\x1b[31merr: numeric overflow\x1b[0m"),
+            StackError::ZeroDiv=> write!(f, "\x1b[31merr: zero division\x1b[0m"),
+            StackError::PopEmpty => write!(f, "\x1b[31merr: attempted to pop empty stack!\x1b[0m"),
+            StackError::PrematureEnd => write!(f, "\x1b[31mexpected more program input, but none was found.\x1b[0m"),
+            StackError::InvalidCoercion => write!(f, "\x1b[31merr: cannot coerce operands to target type\x1b[0m"),
             StackError::TypeMismatch(s) => write!(f, "{}", s),
-            StackError::UserDefined(s) => write!(f, "{}", s),
+            StackError::UserDefined(s) => write!(f, "\x1b[31m{}\x1b[0m", s),
             _ => write!(f, "not implemented")
         }
     }
