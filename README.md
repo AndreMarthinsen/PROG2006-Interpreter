@@ -1,3 +1,4 @@
+![CI](https://img.shields.io/github/actions/workflow/status/VanWrinkle/PROG2006-Interpreter/rust.yml?branch=main)
 # PROG2006 - Interpreter
 
 ## Description
